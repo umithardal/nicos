@@ -8,15 +8,10 @@ sysconfig = dict(
     cache = 'localhost',
     instrument = None,
     experiment = 'Exp',
-    datasinks = ['conssink', 'filesink', 'daemonsink'],
-    notifiers = ['email'],
+    datasinks = ['conssink', 'filesink', 'daemonsink', 'liveview'],
 )
 
 modules = ['nicos.commands.standard']
-
-includes = [
-    'notifiers',
-]
 
 devices = dict(
     cspec = device('nicos.devices.instrument.Instrument',
@@ -52,5 +47,22 @@ devices = dict(
         description = 'The amount of free space for storing data',
         path = None,
         minfree = 5,
+    ),
+    liveview=device('nicos.devices.datasinks.LiveViewSink', ),
+    NexusDataSink=device(
+        'nicos_ess.devices.datasinks.nexussink.NexusFileWriterSink',
+        description="Sink for NeXus file writer (kafka-to-nexus)",
+        brokers=["kafka:9092"],
+        cmdtopic="TEST_writerCommand",
+        status_provider='NexusFileWriter',
+        templatesmodule='nicos_ess.essiip.nexus.nexus_templates',
+        templatename='essiip_default',
+        start_fw_file='/opt/nexus_templates/gareth.json'
+    ),
+    NexusFileWriter=device(
+        'nicos_ess.devices.datasinks.nexussink.NexusFileWriterStatus',
+        description="Status for nexus file writing",
+        brokers=["kafka:9092"],
+        statustopic="TEST_writerStatus",
     ),
 )
