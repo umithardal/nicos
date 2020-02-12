@@ -11,7 +11,7 @@ sysconfig = dict(
     datasinks = ['conssink', 'filesink', 'daemonsink', 'liveview'],
 )
 
-modules = ['nicos.commands.standard']
+modules = ['nicos.commands.standard', 'nicos_ess.cspec.commands.filewriter']
 
 devices = dict(
     cspec = device('nicos.devices.instrument.Instrument',
