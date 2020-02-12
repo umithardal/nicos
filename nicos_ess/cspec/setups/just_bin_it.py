@@ -11,7 +11,8 @@ devices = dict(
         command_topic="hist_commands",
     ),
     heart_beat=device(
-       "nicos_ess.devices.datasources.just_bin_it.JustBinItStatus",
+        "nicos_ess.devices.datasources.just_bin_it.JustBinItStatus",
+        brokers=["kafka:9092"],
         statustopic="jbi_heartbeat",
     ),
 )
