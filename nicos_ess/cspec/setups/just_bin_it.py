@@ -10,4 +10,8 @@ devices = dict(
         unit="evts",
         command_topic="hist_commands",
     ),
+    heart_beat=device(
+       "nicos_ess.devices.datasources.just_bin_it.JustBinItStatus",
+        statustopic="jbi_heartbeat",
+    ),
 )
