@@ -54,6 +54,14 @@ CONFIG = {
                                     "source": "just-bin-it",
                                     "writer_module": "ev42",
                                 },
+                            },
+                            {
+                                "type": "dataset",
+                                "name": "title",
+                                "dataset": {
+                                    "type": "string"
+                                },
+                                "values": "TITLE"
                             }
                         ],
                         "attributes": [{"name": "NX_class", "values": "NXgroup"}],
@@ -93,12 +101,14 @@ def start_filewriter(title="No title"):
         CONFIG["job_id"] = file_id
         CONFIG["broker"] = BROKER
         CONFIG["start_time"] = starttime
+        config_json = json.dumps(CONFIG).encode()
+        config_json = config_json.replace("TITLE", title)
 
         session.log.info('Started file writing job %s at: %s (%s)',
                       str(file_id), starttime_str, starttime)
         session.log.info(CONFIG["file_attributes"]["file_name"])
 
-        send_to_kafka(COMMAND_TOPIC, json.dumps(CONFIG).encode())
+        send_to_kafka(COMMAND_TOPIC, config_json)
 
 
 @usercommand
