@@ -55,19 +55,26 @@ CONFIG = {
                                     "writer_module": "ev42",
                                 },
                             },
-                            {
-                                "type": "dataset",
-                                "name": "title",
-                                "dataset": {
-                                    "type": "string"
-                                },
-                                "values": "TITLE"
-                            }
+
                         ],
                         "attributes": [{"name": "NX_class", "values": "NXgroup"}],
                     },
+                    {
+                        "type": "dataset",
+                        "name": "title",
+                        "dataset": {
+                            "type": "string"
+                        },
+                        "values": "TITLE"
+                    }
                 ],
-            }
+                "attributes": [
+                  {
+                    "name": "NX_class",
+                    "values": "NXentry"
+                  }
+                ]
+            },
         ]
     },
 }
