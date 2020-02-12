@@ -101,14 +101,14 @@ def start_filewriter(title="No title"):
         CONFIG["job_id"] = file_id
         CONFIG["broker"] = BROKER
         CONFIG["start_time"] = starttime
-        config_json = json.dumps(CONFIG).encode()
+        config_json = json.dumps(CONFIG)
         config_json = config_json.replace("TITLE", title)
 
         session.log.info('Started file writing job %s at: %s (%s)',
                       str(file_id), starttime_str, starttime)
         session.log.info(CONFIG["file_attributes"]["file_name"])
 
-        send_to_kafka(COMMAND_TOPIC, config_json)
+        send_to_kafka(COMMAND_TOPIC, config_json.encode())
 
 
 @usercommand
