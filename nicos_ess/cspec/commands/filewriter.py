@@ -94,7 +94,6 @@ def start_filewriter(title="No title"):
     if session.mode == SIMULATION:
         session.log.info('=> dry run: starting file writing')
     else:
-        iso8601_time = datetime.datetime.utcnow().isoformat().split(".")[0]
         starttime = int(time.time() * 1000)
         starttime_str = time.strftime('%Y-%m-%d %H:%M:%S',
                                       time.localtime(starttime / 1000))
@@ -161,7 +160,7 @@ def get_file_number(update=False):
             data = consumer.poll(5)
         curr = int(data[tp][-1].value)
     else:
-        curr = 1
+        curr = 0
 
     if update:
         curr += 1
