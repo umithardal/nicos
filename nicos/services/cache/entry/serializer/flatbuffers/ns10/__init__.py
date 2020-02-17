@@ -36,7 +36,7 @@ except ImportError:
     flatbuffers = None
     CacheEntryFB = None
 
-file_identifier = 'ns10'
+file_identifier = b'ns10'
 
 
 def encode(key, entry):
@@ -62,10 +62,11 @@ def encode(key, entry):
     CacheEntryFB.CacheEntryAddTime(builder, entry.time)
     CacheEntryFB.CacheEntryAddKey(builder, key_fb_str)
     fb_entry = CacheEntryFB.CacheEntryEnd(builder)
-    builder.Finish(fb_entry, file_identifier=to_utf8(file_identifier))
+    builder.Finish(fb_entry)
 
     # Generate the output and replace the file_identifier
     fb_array = builder.Output()
+    fb_array[4:8] = file_identifier
 
     return bytes(fb_array)
 
