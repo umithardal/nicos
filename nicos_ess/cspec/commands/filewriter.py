@@ -49,10 +49,9 @@ CONFIG = {
                             {
                                 "type": "stream",
                                 "stream": {
-                                    "dtype": "double",
-                                    "topic": "fake_events",
-                                    "source": "just-bin-it",
-                                    "writer_module": "ev42",
+                                    "topic": "TEST_nicosCacheCompacted",
+                                    "source": "nicos/device/chi",
+                                    "writer_module": "ns10",
                                 },
                             },
 
