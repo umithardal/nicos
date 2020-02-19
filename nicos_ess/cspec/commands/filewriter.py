@@ -34,7 +34,7 @@ CONFIG = {
     "broker": "localhost:9092",
     "job_id": "1234",
     "use_hdf_swmr": True,
-    "start_time": 1547198055000,
+    "start_time": 0,
     "file_attributes": {"file_name": "output_file1.nxs"},
     "nexus_structure": {
         "children": [
@@ -50,7 +50,7 @@ CONFIG = {
                                 "type": "stream",
                                 "stream": {
                                     "topic": "TEST_nicosCacheCompacted",
-                                    "source": "nicos/device/chi",
+                                    "source": "nicos/power/value",
                                     "writer_module": "ns10",
                                 },
                             },
