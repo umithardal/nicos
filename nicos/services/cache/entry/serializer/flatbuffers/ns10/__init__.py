@@ -36,7 +36,7 @@ except ImportError:
     flatbuffers = None
     CacheEntryFB = None
 
-file_identifier = b'ns10'
+file_identifier = 'ns10'
 
 
 def encode(key, entry):
@@ -66,7 +66,7 @@ def encode(key, entry):
 
     # Generate the output and replace the file_identifier
     fb_array = builder.Output()
-    fb_array[4:8] = file_identifier
+    fb_array[4:8] = file_identifier.encode()
 
     return bytes(fb_array)
 
