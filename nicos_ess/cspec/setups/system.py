@@ -67,11 +67,8 @@ devices = dict(
     ),
     KafkaForwarder=device(
         'nicos_ess.devices.forwarder.EpicsKafkaForwarder',
-        description="Configures commands to forward-epics-to-kafka",
-        cmdtopic="TEST_forwarderConfig",
+        description="Reports status of forward-epics-to-kafka",
         statustopic="TEST_forwarderStatus",
-        instpvtopic="",
-        instpvschema='f142',
         brokers=["kafka:9092"],
     ),
 )

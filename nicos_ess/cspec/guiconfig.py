@@ -42,8 +42,8 @@ windows = [
     #             panel('nicos.clients.gui.panels.setup_panel.DetEnvPanel')),
     #     )
     # ),
-    # window('Scans', 'plotter',
-    #        panel('nicos.clients.gui.panels.scans.ScansPanel'),),
+    window('Scans', 'plotter',
+           panel('nicos.clients.gui.panels.scans.ScansPanel')),
     window('History', 'find',
            panel('nicos.clients.gui.panels.history.HistoryPanel'),),
     window('Logbook', 'table',
