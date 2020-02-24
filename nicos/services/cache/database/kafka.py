@@ -38,6 +38,14 @@ from nicos.services.cache.entry.serializer import CacheEntrySerializer
 from nicos.utils import createThread
 
 
+def kafka_available(brokers):
+    try:
+        KafkaConsumer(bootstrap_servers=brokers)
+        return True
+    except Exception as error:
+        return False
+
+
 class KafkaCacheDatabase(MemoryCacheDatabase):
     """ Cache database that stores cache in Kafka topics without History.
 
@@ -81,6 +89,8 @@ class KafkaCacheDatabase(MemoryCacheDatabase):
         'brokers': Param('List of Kafka bootstrap servers.',
                          type=listof(host(defaultport=9092)),
                          default=['localhost']),
+        'retry_interval': Param('How long to wait before retrying to connect',
+                                type=float, default=5.0, internal=True),
     }
 
     attached_devices = {
@@ -90,6 +100,13 @@ class KafkaCacheDatabase(MemoryCacheDatabase):
 
     def doInit(self, mode):
         MemoryCacheDatabase.doInit(self, mode)
+
+        # Wait until Kafka is available
+        while not kafka_available(self.brokers):
+            self.log.error(
+                "Could not connect to Kafka brokers  - will retry shortly"
+            )
+            sleep(self.retry_interval)
 
         # Create the producer
         self._producer = KafkaProducer(bootstrap_servers=self.brokers)
@@ -168,7 +185,7 @@ class KafkaCacheDatabase(MemoryCacheDatabase):
         # This method is responsible to communicate and update all the
         # topics that should be updated. Subclasses can (re)implement it
         # if there are messages to be produced to other topics
-        self.log.debug('Writing: %s -> %s', key, entry.value)
+        self.log.debug('writing: %s -> %s', key, entry.value)
 
         # For the log-compacted topic key deletion happens when None is
         # passed as the value for the key
@@ -238,10 +255,19 @@ class KafkaCacheDatabaseWithHistory(KafkaCacheDatabase):
         'historytopic': Param(
             'Kafka topic where the history values are stored',
             type=str, mandatory=True),
+        'retry_interval': Param('How long to wait before retrying to connect',
+                                type=float, default=5.0, internal=True),
     }
 
     def doInit(self, mode):
         KafkaCacheDatabase.doInit(self, mode)
+
+        # Wait until Kafka is available
+        while not kafka_available(self.brokers):
+            self.log.error(
+                "Could not connect to Kafka brokers  - will retry shortly"
+            )
+            sleep(self.retry_interval)
 
         if self.historytopic not in self._consumer.topics():
             raise ConfigurationError(
@@ -268,7 +294,7 @@ class KafkaCacheDatabaseWithHistory(KafkaCacheDatabase):
         KafkaCacheDatabase.doShutdown(self)
 
     def ask_hist(self, key, fromtime, totime):
-        self.log.debug('Hist for %s in (%s, %s)' % (key, fromtime, totime))
+        self.log.debug('hist for %s in (%s, %s)' % (key, fromtime, totime))
         buffer_time = 10
 
         # Get the assignment
@@ -309,7 +335,7 @@ class KafkaCacheDatabaseWithHistory(KafkaCacheDatabase):
         # Return at least the last value, if none match the range
         if not found_some and key in self._db:
             entry = self._db[key][-1]
-            self.log.debug("Not found in provided range, fetching current.")
+            self.log.debug("not found in provided range, fetching current")
             yield ('%r@%s=%s\n' % (entry.time, key, entry.value))
 
     def _update_topic(self, key, entry):
