@@ -2,24 +2,20 @@ description = 'setup for the cache server'
 group = 'special'
 
 devices = dict(
-    DB     = device('nicos.services.cache.server.FlatfileCacheDatabase',
-                    storepath = '/opt/nicos-data/cache',
-                    loglevel = 'info',
-                   ),
+    serializer=device(
+        'nicos.services.cache.entry.serializer.flatbuffers.FlatbuffersCacheEntrySerializer'),
 
+    DB=device(
+        'nicos.services.cache.database.kafka.KafkaCacheDatabaseWithHistory',
+        currenttopic='TEST_nicosCacheCompacted',
+        historytopic='TEST_nicosCacheHistory',
+        brokers=["kafka:9092"],
+        loglevel='info',
+        serializer='serializer'
+    ),
     Server = device('nicos.services.cache.server.CacheServer',
-                    db = 'DB',
-                    # 'localhost' will normally bind the cache service to the
-                    # loopback device
-                    # '' will bind the daemon to all network interfaces in the
-                    # machine
-                    # If server is the hostname (official computer name) or an
-                    # IP address the daemon will be bound the the corresponding
-                    # network interface.
-                    # Binding the cache to the 'localhost' leads to trouble if
-                    # some other NICOS services are running on different
-                    # machines
-                    server = '',
-                    loglevel = 'debug',
-                   ),
+        db = 'DB',
+        server = '',
+        loglevel = 'info',
+    ),
 )
