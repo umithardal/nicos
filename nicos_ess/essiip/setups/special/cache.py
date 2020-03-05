@@ -7,8 +7,8 @@ devices = dict(
 
     DB=device(
         'nicos.services.cache.database.kafka.KafkaCacheDatabaseWithHistory',
-        currenttopic='TEST_nicosCacheCompacted',
-        historytopic='TEST_nicosCacheHistory',
+        currenttopic='UTGARD_nicosCacheCompacted',
+        historytopic='UTGARD_nicosCacheHistory',
         brokers=["kafka:9092"],
         loglevel='info',
         serializer='serializer'
