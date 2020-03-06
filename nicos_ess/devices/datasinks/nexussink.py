@@ -212,65 +212,41 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
         self._remove_optional_components()
 
         # Get the start time
-        self.iso8601_time = datetime.datetime.utcnow().isoformat().split(".")[0]
         if not self.dataset.started:
             self.dataset.started = time.time()
 
-        starttime = int(self.dataset.started * 1000)
-        starttime_str = time.strftime('%Y-%m-%d %H:%M:%S',
-                                      time.localtime(starttime / 1000))
+        start_time = int(self.dataset.started * 1000)
+        start_time_str = time.strftime('%Y-%m-%d %H:%M:%S',
+                                      time.localtime(start_time / 1000))
 
         metainfo = self.dataset.metainfo
         # Put the start time in the metainfo
         if ('dataset', 'starttime') not in metainfo:
 
-            metainfo[('dataset', 'starttime')] = (starttime_str, starttime_str,
+            metainfo[('dataset', 'starttime')] = (start_time_str, start_time_str,
                                                   '', 'general')
 
-        if self.sink.start_fw_file:
-            # Load the JSON file containing the command to send.
-            # This functionality is primarily for testing and debugging.
-            self.log.debug("Loading filewriter command from {}".format(
-                self.sink.start_fw_file))
-            try:
-                with open(self.sink.start_fw_file, "r") as f:
-                    command_str = f.read()
-                command_str = command_str.replace("STARTTIME", str(starttime))
-                command_str = command_str.replace("8601TIME", self.iso8601_time)
-                command_str = command_str.replace("TITLE", self.sink.title)
-                command = json.loads(command_str)
-            except Exception as err:
-                self.log.error(
-                    "Could not create filewriter command from file: {}".format(
-                        err))
-        else:
-            # Generate the command within NICOS
-            structure = self._converter.convert(self.sink.template,
-                                                self.dataset.metainfo)
+        # Generate the command within NICOS
+        structure = self._converter.convert(self.sink.template,
+                                            self.dataset.metainfo)
+        job_id = str(self.dataset.uid)
 
-            command = {
-                "cmd": "FileWriter_new",
-                "use_hdf_swmr": self.sink.useswmr,
-                "nexus_structure": structure,
-            }
-
-        # Set the values that can be different between runs
-        command["file_attributes"] = {
-            "file_name": "/data/kafka-to-nexus/nicos" + os.path.basename(self.dataset.filepaths[0])
-        }
-        command["job_id"] = str(self.dataset.uid)
-        command["broker"] = ','.join(self.sink.brokers)
-        command["start_time"] = starttime
-
-        # Write the stoptime when already known
+        # Write the stoptime if already known
+        stop_time = 0
         if self.dataset.finished:
-            stoptime = int(self.dataset.finished * 1000)
-            command["stop_time"] = stoptime
+            stop_time = int(self.dataset.finished * 1000)
             self.rewriting = True
 
-        self.log.info('Started file writing at: %s (%s)',
-                      starttime_str, starttime)
-        self.sink.send(self.sink.cmdtopic, json.dumps(command))
+        filename = os.path.basename(self.dataset.filepaths[0])
+        start_message = serialise_pl72(job_id=job_id, filename=filename,
+                                       start_time=start_time,
+                                       stop_time=stop_time,
+                                       nexus_structure=structure,
+                                       broker=','.join(self.sink.brokers))
+
+        self.log.info('Started file writing at: %s (%s)', start_time_str,
+                      start_time)
+        self.sink.send(self.sink.cmdtopic, start_message)
 
         # Tell the sink that this dataset has started
         self.sink.dataset_started(self.dataset)
@@ -280,16 +256,13 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
         if not self.rewriting:
             if not self.dataset.finished:
                 self.dataset.finished = time.time()
-            stoptime = int(self.dataset.finished * 1000)
+            stop_time = int(self.dataset.finished * 1000)
 
-            command = {
-                "cmd": "FileWriter_stop",
-                "job_id": str(self.dataset.uid),
-                "stop_time": stoptime
-            }
+            stop_message = serialise_6s4t(job_id=str(self.dataset.uid),
+                                          stop_time=stop_time)
 
-            self.log.info('Stopped file writing at: %s', stoptime)
-            self.sink.send(self.sink.cmdtopic, json.dumps(command))
+            self.log.info('Stopped file writing at: %s', stop_time)
+            self.sink.send(self.sink.cmdtopic, stop_message)
 
         # Tell the sink that this dataset has ended
         self.sink.dataset_ended(self.dataset, self.rewriting)
