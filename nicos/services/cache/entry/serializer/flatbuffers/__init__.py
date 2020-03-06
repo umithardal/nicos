@@ -41,7 +41,8 @@ class FlatbuffersCacheEntrySerializer(CacheEntrySerializer):
 
     def encode(self, key, entry, schema='ns10', **params):
         try:
-            return serialise_ns10(key, entry.value, entry.time, entry.ttl,
+            ttl = entry.ttl if entry.ttl else 0
+            return serialise_ns10(key, entry.value, entry.time, ttl,
                                   entry.expired)
         except Exception as error:
             self.log.error('Cannot encode ns10 cache entry: %s', error)
@@ -49,13 +50,13 @@ class FlatbuffersCacheEntrySerializer(CacheEntrySerializer):
     def decode(self, buf):
         try:
             ns_entry = deserialise_ns10(buf)
-            key = ns_entry.key if len(ns_entry.key) else None
+            key = ns_entry.key if len(ns_entry.key) > 0 else None
             ttl = ns_entry.ttl if ns_entry.ttl != 0 else None
             value = ns_entry.value if ns_entry.value else None
 
             entry = CacheEntry(ns_entry.time_stamp, ttl, value)
             entry.expired = ns_entry.expired
-            return entry
+            return key, entry
         except Exception as error:
             self.log.error('Could not decode ns10 cache entry: %s', error)
             return None, None
