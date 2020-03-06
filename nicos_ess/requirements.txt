@@ -1,2 +1,7 @@
-kafka-python>=1.4.6
-git+https://github.com/google/flatbuffers.git#egg=flatbuffers&subdirectory=python
+kafka-python
+PyQt5
+PyQtWebEngine
+pyepics
+flatbuffers
+https://github.com/ess-dmsc/python-streaming-data-types/releases/download/v0.2.0/streaming_data_types-0.2.0-py3-none-any.whl
+
