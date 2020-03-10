@@ -25,19 +25,20 @@ from nicos import session
 from nicos.commands import usercommand, parallel_safe
 from nicos.core.constants import SIMULATION
 import json
+import os
 import time
 from kafka import KafkaProducer, KafkaConsumer, TopicPartition
 from streaming_data_types.run_start_pl72 import serialise_pl72
 from streaming_data_types.run_stop_6s4t import serialise_6s4t
 
-
-FW_CONFIG_FILE = "nexus_structure.txt"
+FILE_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+FW_CONFIG_FILE = os.path.join(FILE_ROOT, "nexus_structure.txt")
 JOB_ID = "62075348-cfe5-11e9-9141-c8f75089fb03"
-BROKER = "172.30.242.20:9092"
-COMMAND_TOPIC = "UTGARD_writerCommand"
-RUNINFO_TOPIC = 'UTGARD_runInfo'
+BROKER = "localhost:9092"
+COMMAND_TOPIC = "TEST_writerCommand"
+RUNINFO_TOPIC = 'TEST_runInfo'
 FILENUMBER_TOPIC ='nicos_filenumber'
-INSTRUMENT_NAME = "YMIR"
+
 
 @usercommand
 @parallel_safe
@@ -52,7 +53,7 @@ def start_filewriter(title="No title"):
         filename = file_id.zfill(8) + ".hdf"
         start_time = int(time.time() * 1000)
         with open(FW_CONFIG_FILE, "r") as f:
-            nexus_struct = json.dumps(f.read())
+            nexus_struct = f.read()
 
         start_message = serialise_pl72(
             job_id=file_id,
