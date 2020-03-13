@@ -86,8 +86,17 @@ def _pvget(channel, field='value', as_string=False):
                 {'index', 'choices'}.issubset(set(result))):
             # convert (most probably) enum to string
             return result.get('choices')[result.get('index')]
-        elif isinstance(result, (list, np.ndarray)):
+        elif isinstance(result, list):
             # convert char waveform to string
+            firstnull = result.index(0) if 0 in result else len(result)
+            try:
+                cval = ''.join([chr(i) for i in result[:firstnull]]).rstrip()
+            except ValueError:
+                cval = ''
+            return cval
+        elif isinstance(result, np.ndarray):
+            result = result.tolist()
+            # TODO: repeat code for list
             firstnull = result.index(0) if 0 in result else len(result)
             try:
                 cval = ''.join([chr(i) for i in result[:firstnull]]).rstrip()
