@@ -31,6 +31,7 @@ for handling EPICS communication is pvaPy.
 from __future__ import absolute_import, division, print_function
 
 from time import time as currenttime
+import numpy as np
 
 from nicos import session
 from nicos.commands import helparglist, hiddenusercommand
@@ -85,7 +86,7 @@ def _pvget(channel, field='value', as_string=False):
                 {'index', 'choices'}.issubset(set(result))):
             # convert (most probably) enum to string
             return result.get('choices')[result.get('index')]
-        elif isinstance(result, list):
+        elif isinstance(result, (list, np.ndarray)):
             # convert char waveform to string
             firstnull = result.index(0) if 0 in result else len(result)
             try:
@@ -101,7 +102,6 @@ def _pvget(channel, field='value', as_string=False):
         return result['index']
 
     return result
-
 
 
 class EpicsDevice(DeviceMixinBase):
