@@ -99,9 +99,13 @@ def _pvget(channel, field='value', as_string=False):
             return _convert_chars_to_str(result)
         elif isinstance(result, np.ndarray):
             return _convert_chars_to_str(result.tolist())
+        else:
+            return str(result)
+
     # For ENUMs do not return the dict but just the index
     if isinstance(result, dict) and 'index' in result:
         return result['index']
+
     return result
 
 
