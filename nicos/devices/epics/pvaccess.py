@@ -75,6 +75,15 @@ def pvput(name, value, use_ca=True):
     pvaccess.Channel(name, pvaccess.CA if use_ca else pvaccess.PVA).put(value)
 
 
+def _convert_chars_to_str(char_array):
+    firstnull = char_array.index(0) if 0 in char_array else len(char_array)
+    try:
+        cval = ''.join([chr(i) for i in char_array[:firstnull]]).rstrip()
+    except ValueError:
+        cval = ''
+    return cval
+
+
 def _pvget(channel, field='value', as_string=False):
     try:
         result = channel.get(field).getPyObject()
@@ -87,29 +96,12 @@ def _pvget(channel, field='value', as_string=False):
             # convert (most probably) enum to string
             return result.get('choices')[result.get('index')]
         elif isinstance(result, list):
-            # convert char waveform to string
-            firstnull = result.index(0) if 0 in result else len(result)
-            try:
-                cval = ''.join([chr(i) for i in result[:firstnull]]).rstrip()
-            except ValueError:
-                cval = ''
-            return cval
+            return _convert_chars_to_str(result)
         elif isinstance(result, np.ndarray):
-            result = result.tolist()
-            # TODO: repeat code for list
-            firstnull = result.index(0) if 0 in result else len(result)
-            try:
-                cval = ''.join([chr(i) for i in result[:firstnull]]).rstrip()
-            except ValueError:
-                cval = ''
-            return cval
-        else:
-            return str(result)
-
+            return _convert_chars_to_str(result.tolist())
     # For ENUMs do not return the dict but just the index
     if isinstance(result, dict) and 'index' in result:
         return result['index']
-
     return result
 
 
