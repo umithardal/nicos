@@ -47,7 +47,7 @@ devices = dict(
 
     det=device('nicos_ess.devices.datasources.just_bin_it.JustBinItDetector',
                description="The just-bin-it histogrammer", hist_topic="just-bin-it",
-               data_topic="LOQ_events", brokers=["172.30.242.20:9092"],
+               data_topic="LOQ_events", brokers=["dmsc-kafka01.cslab.esss.lu.se:9092"],
                unit="evts", command_topic="hist_commands"),
 
     jbi_liveview=device('nicos.devices.datasinks.LiveViewSink',
@@ -56,7 +56,7 @@ devices = dict(
     NexusDataSink=device(
         'nicos_ess.devices.datasinks.nexussink.NexusFileWriterSink',
         description="Sink for NeXus file writer (kafka-to-nexus)",
-        brokers=["172.30.242.20:9092"],
+        brokers=["dmsc-kafka01.cslab.esss.lu.se:9092"],
         cmdtopic="UTGARD_writerCommand",
         status_provider='NexusFileWriter',
         templatesmodule='nicos_ess.essiip.nexus.nexus_templates',
@@ -67,7 +67,7 @@ devices = dict(
     NexusFileWriter=device(
         'nicos_ess.devices.datasinks.nexussink.NexusFileWriterStatus',
         description="Status for nexus file writing",
-        brokers=["172.30.242.20:9092"],
+        brokers=["dmsc-kafka01.cslab.esss.lu.se:9092"],
         statustopic="UTGARD_writerStatus",
     ),
     KafkaForwarder=device(
@@ -77,7 +77,7 @@ devices = dict(
         statustopic="UTGARD_forwarderStatus",
         instpvtopic="",
         instpvschema='f142',
-        brokers=["172.30.242.20:9092"],
+        brokers=["dmsc-kafka01.cslab.esss.lu.se:9092"],
     ),
 )
 
