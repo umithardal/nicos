@@ -1,4 +1,5 @@
 kafka-python
+pvapy
 PyQt5
 PyQtWebEngine
 pyepics
