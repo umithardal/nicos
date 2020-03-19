@@ -237,6 +237,8 @@ class EpicsMotor(CanDisable, CanReference, HasOffset, EpicsAnalogMoveableEss,
         if not self.errormsgpv:
             return ''
 
+        value = self._get_pv('errormsgpv', as_string=True)
+
         return self._get_pv('errormsgpv', as_string=True)
 
     def doStop(self):

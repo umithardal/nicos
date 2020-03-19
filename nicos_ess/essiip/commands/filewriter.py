@@ -34,9 +34,9 @@ from streaming_data_types.run_stop_6s4t import serialise_6s4t
 FILE_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 FW_CONFIG_FILE = os.path.join(FILE_ROOT, "nexus_structure.txt")
 JOB_ID = "62075348-cfe5-11e9-9141-c8f75089fb03"
-BROKER = "localhost:9092"
-COMMAND_TOPIC = "TEST_writerCommand"
-RUNINFO_TOPIC = 'TEST_runInfo'
+BROKER = "172.30.242.20:9092"
+COMMAND_TOPIC = "UTGARD_writerCommand"
+RUNINFO_TOPIC = 'UTGARD_runInfo'
 FILENUMBER_TOPIC ='nicos_filenumber'
 
 
