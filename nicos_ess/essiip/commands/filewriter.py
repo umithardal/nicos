@@ -25,18 +25,20 @@ from nicos import session
 from nicos.commands import usercommand, parallel_safe
 from nicos.core.constants import SIMULATION
 import json
+import os
 import time
-import datetime
 from kafka import KafkaProducer, KafkaConsumer, TopicPartition
+from streaming_data_types.run_start_pl72 import serialise_pl72
+from streaming_data_types.run_stop_6s4t import serialise_6s4t
 
-
-FW_CONFIG_FILE = "filewriter_config.json"
+FILE_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+FW_CONFIG_FILE = os.path.join(FILE_ROOT, "nexus_structure.txt")
 JOB_ID = "62075348-cfe5-11e9-9141-c8f75089fb03"
 BROKER = "172.30.242.20:9092"
 COMMAND_TOPIC = "UTGARD_writerCommand"
 RUNINFO_TOPIC = 'UTGARD_runInfo'
 FILENUMBER_TOPIC ='nicos_filenumber'
-INSTRUMENT_NAME = "YMIR"
+
 
 @usercommand
 @parallel_safe
@@ -47,32 +49,24 @@ def start_filewriter(title="No title"):
     if session.mode == SIMULATION:
         session.log.info('=> dry run: starting file writing')
     else:
-        iso8601_time = datetime.datetime.utcnow().isoformat().split(".")[0]
-        starttime = int(time.time() * 1000)
-        starttime_str = time.strftime('%Y-%m-%d %H:%M:%S',
-                                      time.localtime(starttime / 1000))
-        with open(FW_CONFIG_FILE, "r") as f:
-            command_str = f.read()
-        command_str = command_str.replace("STARTTIME", str(starttime))
-        command_str = command_str.replace("8601TIME", iso8601_time)
-        command_str = command_str.replace("TITLE", title)
-        command = json.loads(command_str)
-
         file_id = get_file_number(update=True)
-        # Set the values that can be different between runs
-        command["file_attributes"] = {
-            "file_name": file_id.zfill(8) + ".hdf"
-        }
+        filename = file_id.zfill(8) + ".hdf"
+        start_time = int(time.time() * 1000)
+        with open(FW_CONFIG_FILE, "r") as f:
+            nexus_struct = f.read()
 
-        command["job_id"] = file_id
-        command["broker"] = BROKER
-        command["start_time"] = starttime
+        start_message = serialise_pl72(
+            job_id=file_id,
+            filename=filename,
+            start_time=start_time,
+            nexus_structure=nexus_struct,
+            broker=BROKER
+        )
 
-        session.log.info('Started file writing job %s at: %s (%s)',
-                      str(file_id), starttime_str, starttime)
-        session.log.info(command["file_attributes"]["file_name"])
-
-        send_to_kafka(COMMAND_TOPIC, json.dumps(command).encode())
+        session.log.info('Requested start of file writing job %s at: %s',
+                         str(file_id), time.strftime('%Y-%m-%d %H:%M:%S',
+                         time.localtime(start_time / 1000)))
+        send_to_kafka(COMMAND_TOPIC, start_message)
 
 
 @usercommand
@@ -84,16 +78,17 @@ def stop_filewriter(job_id=None):
     if session.mode == SIMULATION:
         session.log.info('=> dry run: stopping file writing')
     else:
-        stoptime = int(time.time() * 1000)
+        stop_time = int(time.time() * 1000)
+        job_id = get_file_number() if not job_id else str(job_id)
+        stop_message = serialise_6s4t(
+            job_id=job_id,
+            stop_time=stop_time,
+        )
 
-        command = {
-            "cmd": "FileWriter_stop",
-            "job_id": get_file_number() if not job_id else str(job_id),
-            "stop_time": stoptime
-        }
-
-        session.log.info('Stopped file writing at: %s', stoptime)
-        send_to_kafka(COMMAND_TOPIC, json.dumps(command).encode())
+        session.log.info('Request job %s to stopped file writing at: %s',
+                         job_id, time.strftime('%Y-%m-%d %H:%M:%S',
+                         time.localtime(stop_time / 1000)))
+        send_to_kafka(COMMAND_TOPIC, stop_message)
 
 
 def send_to_kafka(topic, message):

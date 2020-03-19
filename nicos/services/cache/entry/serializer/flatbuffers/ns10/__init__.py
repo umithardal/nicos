@@ -23,74 +23,39 @@
 # *****************************************************************************
 
 from __future__ import absolute_import, division, print_function
-
-from nicos import session
-from nicos.pycompat import to_utf8
-from nicos.services.cache.entry import CacheEntry as NicosCacheEntry
-
-try:
-    import flatbuffers
-    from nicos.services.cache.entry.serializer.flatbuffers.ns10 import \
-        CacheEntry as CacheEntryFB
-except ImportError:
-    flatbuffers = None
-    CacheEntryFB = None
-
-file_identifier = 'ns10'
+from streaming_data_types.nicos_cache_ns10 import deserialise_ns10, \
+    serialise_ns10
+from nicos.services.cache.entry import CacheEntry
+from nicos.services.cache.entry.serializer import CacheEntrySerializer
 
 
-def encode(key, entry):
-    # Start with a buffer which can automatically grow
-    builder = flatbuffers.Builder(136)
+class FlatbuffersCacheEntrySerializer(CacheEntrySerializer):
+    """Serializes entries using flatbuffers
+    Serialization is done using flatbuffers generated helper class within an
+    auto-generated schema-specific submodule. The serialized output is a byte
+    array which is converted to bytes for storing the data. The `encode` method
+    returns the serialized bytes and the `decode` method can read the buffer
+    and return the entry instance.
+    """
 
-    # Create the strings - this has to be done before starting to build
-    value_fb_str = None
-    if entry.value is not None:
-        value_fb_str = builder.CreateString(entry.value)
-    key_fb_str = builder.CreateString(key)
+    def encode(self, key, entry, schema='ns10', **params):
+        try:
+            ttl = entry.ttl if entry.ttl else 0
+            return serialise_ns10(key, entry.value, entry.time, ttl,
+                                  entry.expired)
+        except Exception as error:
+            self.log.error('Cannot encode ns10 cache entry: %s', error)
 
-    # Start building the buffer.
-    # Flatbuffer must be constructed in the reverse order of the schema.
-    # This might be a bug in flatbuffers.
-    CacheEntryFB.CacheEntryStart(builder)
-    if value_fb_str:
-        CacheEntryFB.CacheEntryAddValue(builder, value_fb_str)
-    CacheEntryFB.CacheEntryAddExpired(builder, entry.expired)
-    # Do not write ttl if it is None
-    if entry.ttl is not None:
-        CacheEntryFB.CacheEntryAddTtl(builder, entry.ttl)
-    CacheEntryFB.CacheEntryAddTime(builder, entry.time)
-    CacheEntryFB.CacheEntryAddKey(builder, key_fb_str)
-    fb_entry = CacheEntryFB.CacheEntryEnd(builder)
-    builder.Finish(fb_entry)
+    def decode(self, buf):
+        try:
+            ns_entry = deserialise_ns10(buf)
+            key = ns_entry.key if len(ns_entry.key) > 0 else None
+            ttl = ns_entry.ttl if ns_entry.ttl != 0 else None
+            value = ns_entry.value if ns_entry.value else None
 
-    # Generate the output and replace the file_identifier
-    fb_array = builder.Output()
-    fb_array[4:8] = b"ns10"
-
-    return bytes(fb_array)
-
-
-def decode(buf):
-    # Check for the correct file identifier
-    identifier = buf[4:8].decode('utf-8')
-    if identifier != file_identifier:
-        session.log.error('Incorrect file identifier found: %s', identifier)
-        return None, None
-
-    # Convert the buffer to FB class
-    fb_entry = CacheEntryFB.CacheEntry.GetRootAsCacheEntry(buf, 0)
-
-    # Capture the default values of key, ttl and set them to None
-    key = fb_entry.Key() if fb_entry.Key() else None
-    ttl = fb_entry.Ttl() if fb_entry.Ttl() != 0 else None
-
-    # Try to get the value if it was written
-    try:
-        value = fb_entry.Value()
-    except Exception:
-        value = None
-
-    entry = NicosCacheEntry(fb_entry.Time(), ttl, value)
-    entry.expired = bool(fb_entry.Expired())
-    return key, entry
+            entry = CacheEntry(ns_entry.time_stamp, ttl, value)
+            entry.expired = ns_entry.expired
+            return key, entry
+        except Exception as error:
+            self.log.error('Could not decode ns10 cache entry: %s', error)
+            return None, None
