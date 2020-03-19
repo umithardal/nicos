@@ -42,13 +42,13 @@ STAT_TO_STATUS = {
 
 # Use environment variable to determine which python EPICS
 # binding it to be used
-if os.environ.get('NICOS_EPICS') == 'pvaccess':
-    from nicos.devices.epics.pvaccess import EpicsDevice, EpicsReadable, \
+if os.environ.get('NICOS_EPICS') == 'ca':
+    from nicos.devices.epics.pyepics import EpicsDevice, EpicsReadable, \
         EpicsStringReadable, EpicsMoveable, EpicsStringMoveable, \
         EpicsAnalogMoveable, EpicsDigitalMoveable, EpicsWindowTimeoutDevice, \
         pvget, pvput
 else:
-    from nicos.devices.epics.pyepics import EpicsDevice, EpicsReadable, \
+    from nicos.devices.epics.pvaccess import EpicsDevice, EpicsReadable, \
         EpicsStringReadable, EpicsMoveable, EpicsStringMoveable, \
         EpicsAnalogMoveable, EpicsDigitalMoveable, EpicsWindowTimeoutDevice, \
         pvget, pvput
