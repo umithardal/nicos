@@ -50,7 +50,7 @@ class FlatbuffersCacheEntrySerializer(CacheEntrySerializer):
     def decode(self, buf):
         try:
             ns_entry = deserialise_ns10(buf)
-            key = ns_entry.key if len(ns_entry.key) > 0 else None
+            key = ns_entry.key if ns_entry.key.strip() else None
             ttl = ns_entry.ttl if ns_entry.ttl != 0 else None
             value = ns_entry.value if ns_entry.value else None
 
