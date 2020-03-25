@@ -4,7 +4,7 @@ group = 'special'
 sysconfig = dict(
     # use only 'localhost' if the cache is really running on the same machine,
     # otherwise use the official computer name
-    cache = 'localhost'
+    cache = 'nicos-cache'
 )
 
 devices = dict(
