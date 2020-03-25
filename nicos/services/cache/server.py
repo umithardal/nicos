@@ -180,7 +180,7 @@ class CacheWorker(object):
             if not line:
                 self.log.info('got empty line, closing connection')
                 self.closedown()
-                return b''
+                return b'Hi!'
             try:
                 ret = self._handle_line(from_utf8(line))
             except Exception as err:
