@@ -28,6 +28,7 @@ from time import sleep, time as currenttime
 
 from kafka import KafkaConsumer, KafkaProducer, TopicPartition
 
+from nicos import session
 from nicos.core import Attach, Param, host, listof
 from nicos.core.errors import ConfigurationError
 from nicos.protocols.cache import FLAG_NO_STORE, OP_TELL, OP_TELLOLD
@@ -38,11 +39,16 @@ from nicos.services.cache.entry.serializer import CacheEntrySerializer
 from nicos.utils import createThread
 
 
-def kafka_available(brokers):
+def kafka_available(brokers, topic):
     try:
-        KafkaConsumer(bootstrap_servers=brokers)
+        consumer = KafkaConsumer(bootstrap_servers=brokers)
+        if topic not in consumer.topics():
+            raise ConfigurationError(
+                'Topic "%s" does not exist, has your sysadmin created it?' %
+                topic)
         return True
     except Exception as error:
+        session.log.error("Could not connect to Kafka topics: %s", error)
         return False
 
 
@@ -102,9 +108,9 @@ class KafkaCacheDatabase(MemoryCacheDatabase):
         MemoryCacheDatabase.doInit(self, mode)
 
         # Wait until Kafka is available
-        while not kafka_available(self.brokers):
+        while not kafka_available(self.brokers, self.currenttopic):
             self.log.error(
-                "Could not connect to Kafka brokers  - will retry shortly"
+                "Could not connect to Kafka topics - will retry shortly"
             )
             sleep(self.retry_interval)
 
@@ -116,12 +122,6 @@ class KafkaCacheDatabase(MemoryCacheDatabase):
             bootstrap_servers=self.brokers,
             auto_offset_reset='earliest'  # start at earliest topic
         )
-
-        # Give up if the topic does not exist
-        if self.currenttopic not in self._consumer.topics():
-            raise ConfigurationError(
-                'Topic "%s" does not exist. Create this topic and restart.'
-                % self.currenttopic)
 
         # Assign the partitions
         partitions = self._consumer.partitions_for_topic(self.currenttopic)
@@ -263,25 +263,14 @@ class KafkaCacheDatabaseWithHistory(KafkaCacheDatabase):
         KafkaCacheDatabase.doInit(self, mode)
 
         # Wait until Kafka is available
-        while not kafka_available(self.brokers):
+        while not kafka_available(self.brokers, self.historytopic):
             self.log.error(
-                "Could not connect to Kafka brokers  - will retry shortly"
+                "Could not connect to Kafka topics - will retry shortly"
             )
             sleep(self.retry_interval)
 
-        if self.historytopic not in self._consumer.topics():
-            raise ConfigurationError(
-                'Topic "%s" does not exist. Create this topic and restart.'
-                % self.historytopic)
-
         # Create the history consumer
         self._history_consumer = KafkaConsumer(bootstrap_servers=self.brokers)
-
-        # Give up if the topic does not exist
-        if self.historytopic not in self._history_consumer.topics():
-            raise ConfigurationError(
-                'Topic "%s" does not exist. Create this topic and restart.'
-                % self.historytopic)
 
         # Assign the partitions
         partitions = self._history_consumer.partitions_for_topic(
