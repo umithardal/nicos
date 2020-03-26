@@ -141,27 +141,27 @@ class KafkaCacheDatabase(MemoryCacheDatabase):
         self._cleaner.join()
 
     def initDatabase(self):
-        self.log.info('Reading messages from kafka topic - %s',
-                      self.currenttopic)
-        now = currenttime()
-        message_count = 0
-        end = self._consumer.end_offsets(list(self._consumer.assignment()))
-        for partition in self._consumer.assignment():
-            while self._consumer.position(partition) < end[partition]:
-                msg = next(self._consumer)
-                message_count += 1
-                if msg.value is not None:
-                    _, entry = self._attached_serializer.decode(msg.value)
-                    if entry is not None and entry.value is not None:
-                        # self.log.debug('%s (%s): %s -> %s', msg.offset,
-                        #               msg.timestamp, msg.key, entry)
-                        if entry.ttl and entry.time + entry.ttl < now:
-                            entry.expired = True
-
-                        self._db[msg.key] = [entry]
+        # self.log.info('Reading messages from kafka topic - %s',
+        #               self.currenttopic)
+        # now = currenttime()
+        # message_count = 0
+        # end = self._consumer.end_offsets(list(self._consumer.assignment()))
+        # for partition in self._consumer.assignment():
+        #     while self._consumer.position(partition) < end[partition]:
+        #         msg = next(self._consumer)
+        #         message_count += 1
+        #         if msg.value is not None:
+        #             _, entry = self._attached_serializer.decode(msg.value)
+        #             if entry is not None and entry.value is not None:
+        #                 # self.log.debug('%s (%s): %s -> %s', msg.offset,
+        #                 #               msg.timestamp, msg.key, entry)
+        #                 if entry.ttl and entry.time + entry.ttl < now:
+        #                     entry.expired = True
+        #
+        #                 self._db[msg.key] = [entry]
 
         self._cleaner.start()
-        self.log.info('Processed %i messages.', message_count)
+        # self.log.info('Processed %i messages.', message_count)
 
     def _clean(self):
         def cleanonce():
