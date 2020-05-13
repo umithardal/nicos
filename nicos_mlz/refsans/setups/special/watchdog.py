@@ -28,22 +28,29 @@ watchlist = [
          type = 'critical',
          gracetime = 30,
     ),
-    dict(
-        condition = '(sixfold_value == "closed" or nl2b_value == "closed") '
-        'and reactorpower_value > 19.1',
-        message = 'NL2b or sixfold shutter closed',
-        type = 'critical',
+    dict(condition = 'reactorpower_value < 19.0 or sixfold_value == "closed" or'
+                     ' nl2b_value == "closed"',
+         precondition = 'sixfold_value == "open" and '
+                        'nl2b_value == "open" and '
+                        'reactorpower_value > 19.8',
+         message = 'Reactor power falling or Sixfold or NL2b closed',
+         type = 'critical',
     ),
-    #dict(condition = 'vacuum_sfk_value > 0.2',
-    #     precondition = 'vacuum_sfk_value < 0.2',
-    #     message = 'vacuum_sfk_value > 0.2',
-    #     type = 'critical',
-    #    ),
-    #dict(condition = 'vacuum_sr_value > 0.02',
-    #     precondition = 'vacuum_sr_value < 0.02',
-    #     message = 'vacuum_sr_value > 0.02',
-    #     type = 'critical',
-    #   ),
+    dict(condition = 'pressure_CB_value > 0.2',
+         precondition = 'pressure_CB_value < 0.1',
+         message = 'pressure_CB_value > 0.2',
+         type = 'critical',
+        ),
+    dict(condition = 'pressure_SFK_value > 0.2',
+         precondition = 'pressure_SFK_value < 0.1',
+         message = 'pressure_SFK_value > 0.2',
+         type = 'critical',
+        ),
+    dict(condition = 'pressure_SR_value > 0.2',
+         precondition = 'pressure_SR_value < 0.1',
+         message = 'pressure_SR_value > 0.2',
+         type = 'critical',
+        ),
 ]
 
 includes = ['notifiers']

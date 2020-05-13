@@ -46,7 +46,7 @@ import numpy
 from nicos import config, get_custom_version, nicos_version
 from nicos.core.acquire import stop_acquire_thread
 from nicos.core.constants import MAIN
-from nicos.core.data import DataManager, DataSink
+from nicos.core.data import DataSink
 from nicos.core.device import Device, DeviceAlias, DeviceMeta
 from nicos.core.errors import AccessError, CacheError, ConfigurationError, \
     ModeError, NicosError, UsageError
@@ -88,7 +88,6 @@ class Session(object):
     name = 'session'
     cache_class = CacheClient
     sessiontype = MAIN
-    has_datamanager = False
 
     def __str__(self):
         # used for cache operations
@@ -159,8 +158,6 @@ class Session(object):
 
         # cache connection
         self.cache = None
-        # data manager
-        self.data = DataManager() if self.has_datamanager else None
         # acquire thread, needed for live()
         self._thd_acquire = None
         # sysconfig devices
@@ -763,6 +760,7 @@ class Session(object):
         # shutdown according to device dependencies
         devs = listvalues(self.devices)
         already_shutdown = set()
+
         # outer loop: as long as there are devices...
         while devs:
             deadlock = True
@@ -788,8 +786,6 @@ class Session(object):
                 raise NicosError('Deadlock detected! Session.unloadSetup '
                                  "failed on these devices: '%s'" % devs)
 
-        if self.data is not None:
-            self.data.reset()
         self.deviceCallback('destroy', list(already_shutdown))
         self.setupCallback([], [])
         self.devices.clear()
@@ -964,6 +960,11 @@ class Session(object):
         Can be overwritten in a derived session to provide other means of
         displaying help.
         """
+        if isinstance(obj, string_types):
+            if obj in self.devices:
+                return self.showHelp(self.devices[obj])
+            elif obj in self.namespace:
+                return self.showHelp(self.namespace[obj])
         if obj is None:
             from nicos.commands.basic import ListCommands
             ListCommands()
@@ -1219,16 +1220,18 @@ class Session(object):
 
     def _watchdogHandler(self, key, value, time, expired=False):
         """Handle a watchdog event."""
-        # value[0] is a timestamp, value[1] a string
-        if key.endswith(('/warning', '/action')):
-            self.watchdogEvent(key.rsplit('/')[-1], value[0], value[1])
+        if key.endswith(('/warning', '/resolved', '/action')):
+            # value[0] is a timestamp, value[1] a string, value[2] the
+            # watchdog entry ID
+            self.watchdogEvent(key.rsplit('/')[-1], *value)
         elif key.endswith('/pausecount'):
+            # value is just a string
             if self.experiment and self.mode == MASTER:
                 self.experiment.pausecount = value
                 if value:
                     self.countloop_request = ('pause', value)
 
-    def watchdogEvent(self, event, time, data):
+    def watchdogEvent(self, event, time, data, entry_id):
         if event == 'warning':
             self.log.warning('WATCHDOG ALERT: %s', data)
         elif event == 'action':
@@ -1519,6 +1522,9 @@ class Session(object):
                 del self.namespace[name]
         # but need to put back the default imports
         self.initNamespace()
+        # let the watchdog know about it
+        if self.cache:
+            self.cache.put_raw('watchdog/reset', [currenttime()])
 
     def storeSysInfo(self):
         if self.cache:

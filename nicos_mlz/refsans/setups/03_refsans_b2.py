@@ -4,7 +4,7 @@ group = 'basic'
 
 includes = [
     'autocollimator',
-    #'b3h3',
+    # 'b3h3',
     'backguard',
     'beamstop',
     'chamber',
@@ -13,10 +13,9 @@ includes = [
     'detector',
     'fak40',
     'gonio',
-    #'gonio_top',
+    # 'gonio_top',
     'guidehall',
     'h2',
-    'height',
     'memograph',
     'nl2b',
     'optic_elements',
@@ -28,12 +27,9 @@ includes = [
     'resolution',
     'safedetectorsystem',
     'safetysystem',
-    'sample',
-    #'samplechanger',
+    'd_last_slit_sample',
+    # 'samplechanger',
     'shutter',
     'shutter_gamma',
     'vsd',
 ]
-
-startupcode = '''
-'''

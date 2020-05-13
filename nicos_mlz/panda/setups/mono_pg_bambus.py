@@ -2,7 +2,7 @@ description = 'PANDA PG-monochromator'
 
 group = 'lowlevel'
 
-includes = ['monofoci', 'monoturm', 'panda_s7']
+includes = ['monofoci', 'monoturm', 'panda_mtt']
 
 excludes = ['mono_pg', 'mono_si', 'mono_cu', 'mono_heusler']
 
@@ -44,8 +44,8 @@ devices = dict(
         userlimits = (-360,360),
         unit = 'deg',
         idlecurrent = 0.1,
-        movecurrent = 0.2,
-        rampcurrent = 0.25,
+        movecurrent = 0.3,
+        rampcurrent = 0.3,
         microstep = 16,
         # speed = 1.5,
         speed = 5,
@@ -55,8 +55,6 @@ devices = dict(
     mfh_pg = device('nicos_mlz.panda.devices.rot_axis.RotAxis',
         description = 'horizontal focus of PG monochromator',
         motor = 'mfh_pg_step',
-        coder = 'mfh_pg_step',
-        obs = [],
         precision = 1,
         refpos = 208.75,
         refspeed = 1.5,
@@ -85,8 +83,6 @@ devices = dict(
     mfv_pg = device('nicos_mlz.panda.devices.rot_axis.RotAxis',
         description = 'vertical focus of PG monochromator',
         motor = 'mfv_pg_step',
-        coder = 'mfv_pg_step',
-        obs = [],
         precision = 1,
         refpos = 221.3,
         refspeed = 1.5,

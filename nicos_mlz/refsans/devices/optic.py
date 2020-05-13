@@ -39,19 +39,27 @@ class Optic(Moveable):
     parameters = {
         'mode': Param('mode of the beam',
                       type=oneof('debug',
-                                 'gisans',
-                                 'point',
                                  'fc:nok5a',
                                  'fc:nok5b',
                                  'fc:nok6',
                                  'fc:nok7',
                                  'fc:nok8',
                                  'fc:nok9',
+                                 'gisans',
+                                 'gisans789',
                                  'neutronguide',
+                                 'point',
+                                 '12mrad789',
+                                 'vc:nok5a',
                                  'vc:nok5a_fc:nok5b',
+                                 'vc:nok5a_fc:nok6',
+                                 'vc:nok5a_fc:nok7',
+                                 'vc:nok5a_fc:nok8',
+                                 'vc:nok5a_fc:nok9',
+                                 '48mrad',
+                                 '54mrad',
                                  ),
-                      settable=True,
-                      userparam=True),
+                      settable=True, userparam=True, category='experiment'),
         # 'polarisation': Param('Polarisation',
         #                       type=oneof('up', 'down', 'standby', 'off'),
         #                       settable=True,
@@ -59,11 +67,9 @@ class Optic(Moveable):
         #                       default='off'),
         'setting': Param('Maps positon to attached devices positions for '
                          'bending beam',
-                         type=dict,
-                         mandatory=True),
+                         type=dict, mandatory=True),
         'masks': Param('Maps mask to attached devices positions',
-                       type=dict,
-                       mandatory=True),
+                       type=dict, mandatory=True),
     }
 
     parameter_overrides = {
@@ -100,9 +106,11 @@ class Optic(Moveable):
         if isinstance(target, string_types):
             try:
                 oneof('horizontal',
+                      '12mrad_b3_12.000',
                       '12mrad_b2_12.254_eng',
                       '12mrad_b2_12.88_big',
                       '12mrad_b3_13.268',
+                      '12mrad_b3_789',
                       '48mrad')(target)
                 return True, ''
             except ValueError as e:

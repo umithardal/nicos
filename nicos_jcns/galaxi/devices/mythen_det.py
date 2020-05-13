@@ -1,7 +1,7 @@
 #  -*- coding: utf-8 -*-
 # *****************************************************************************
 # NICOS, the Networked Instrument Control System of the MLZ
-# Copyright (c) 2009-2019 by the NICOS contributors (see AUTHORS)
+# Copyright (c) 2009-2020 by the NICOS contributors (see AUTHORS)
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -31,14 +31,13 @@ from nicos.core.params import Param, dictwith
 from nicos.core.utils import USER, usermethod
 from nicos.devices.datasinks.image import ImageSink as BaseImageSink, \
     SingleFileSinkHandler as BaseSingleFileSinkHandler
-
-from nicos_mlz.jcns.devices.detector import ImageChannel as JCNSImageChannel
+from nicos.devices.tango import ImageChannel as TangoImageChannel
 
 # available energy parameters
 ENERGY_PARAMETERS = ('xray', 'threshold')
 
 
-class ImageChannel(JCNSImageChannel):
+class ImageChannel(TangoImageChannel):
     """Image channel that allows to configure various parameters of the DECTRIS
     Mythen detector.
     """
@@ -81,7 +80,7 @@ class ImageChannel(JCNSImageChannel):
     def doPrepare(self):
         pilatus_det = session.getDevice('pilatus')
         self._dev.ignoreGate = pilatus_det not in session.experiment.detectors
-        JCNSImageChannel.doPrepare(self)
+        TangoImageChannel.doPrepare(self)
 
     def doReadDelayafter(self):
         return self._dev.delayAfter

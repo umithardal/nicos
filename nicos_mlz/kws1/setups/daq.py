@@ -8,7 +8,7 @@ includes = ['counter']
 excludes = ['virtual_daq']
 
 sysconfig = dict(
-    datasinks = ['kwsformat'],
+    datasinks = ['kwsformat', 'LiveViewSink'],
 )
 
 tango_base = 'tango://phys.kws1.frm2:10000/kws1/'
@@ -40,14 +40,17 @@ devices = dict(
     yamlformat = device('nicos_mlz.kws1.devices.yamlformat.YAMLFileSink',
         detectors = ['det'],
     ),
+    LiveViewSink = device("nicos.devices.datasinks.LiveViewSink",
+        description = "Sends image data to LiveViewWidget",
+    ),
     det_roi = device('nicos_mlz.kws1.devices.daq.ROIRateChannel',
         description = 'Counts inside beamstop',
         bs_x = 'beamstop_x',
         bs_y = 'beamstop_y',
         timer = 'timer',
-        xscale = (0.125, 69.5),
-        yscale = (0.125, 87.5),
-        size = (6, 6),
+        xscale = (0.125, 67.0),
+        yscale = (0.125, 88.0),
+        size = (6, 5),
     ),
     det = device('nicos_mlz.kws1.devices.daq.KWSDetector',
         description = 'KWS detector',

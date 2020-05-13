@@ -79,12 +79,13 @@ class VirtualMotor(HasOffset, CanDisable, Motor):
     def doStart(self, pos):
         if self.curstatus[0] == status.DISABLED:
             raise MoveError(self, 'cannot move, motor is disabled')
-        self._setROParam('curstatus', (status.BUSY, 'virtual moving'))
         pos = float(pos) + self.offset
         if self._thread:
+            self._setROParam('curstatus', (status.BUSY, 'waiting for stop'))
             self._stop = True
             self._thread.join()
         if self.speed != 0:
+            self._setROParam('curstatus', (status.BUSY, 'virtual moving'))
             self._thread = createThread('virtual motor %s' % self,
                                         self.__moving, (pos, ))
         else:
@@ -732,16 +733,13 @@ class VirtualImage(ImageChannelMixin, PassiveChannel):
         self._mythread = createThread('virtual detector %s' % self, self._run)
 
     def _run(self):
-        try:
-            while not self._stopflag:
-                elapsed = self._timer.elapsed_time()
-                self.log.debug('update image: elapsed = %.1f', elapsed)
-                array = self._generate(self._base_loop_delay).astype('<u4')
-                self._buf = self._buf + array
-                self.readresult = [self._buf.sum()]
-                time.sleep(self._base_loop_delay)
-        finally:
-            self._remaining = None
+        while not self._stopflag:
+            elapsed = self._timer.elapsed_time()
+            self.log.debug('update image: elapsed = %.1f', elapsed)
+            array = self._generate(self._base_loop_delay).astype('<u4')
+            self._buf = self._buf + array
+            self.readresult = [self._buf.sum()]
+            time.sleep(self._base_loop_delay)
 
     def doPause(self):
         self._timer.stop()

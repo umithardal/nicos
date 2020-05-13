@@ -52,7 +52,7 @@ class DNSFileSinkHandler(SingleFileSinkHandler):
         scannumber = 0
         scaninfo = ''
         scanpos = ''
-        for ds in session.data.iterParents(self.dataset):
+        for ds in self.manager.iterParents(self.dataset):
             if ds.settype == 'scan':
                 scannumber = ds.counter
                 scaninfo = ds.info
@@ -218,6 +218,6 @@ class DNSFileSink(ImageSink):
                                               '%(proposal)s'
                                               '%(pointcounter)010d'
                                               '%(session.experiment.sample.'
-                                              'samplename)s.d_dat'],
+                                              'filename)s.d_dat'],
                                      ),
     }

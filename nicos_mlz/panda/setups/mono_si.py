@@ -2,7 +2,7 @@ description = 'PANDA Si-monochromator'
 
 group = 'lowlevel'
 
-includes = ['monofoci', 'monoturm', 'panda_s7']
+includes = ['monofoci', 'monoturm', 'panda_mtt']
 
 excludes = ['mono_pg', 'mono_cu', 'mono_heusler']
 
@@ -63,7 +63,6 @@ devices = dict(
         description = 'horizontal focus of Si monochromator',
         motor = 'mfh_si_step',
         coder = 'mfh_si_enc',
-        obs = [],
         precision = 0.01,
         backlash = -0.2,
         refpos = 1.4,

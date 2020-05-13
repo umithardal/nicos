@@ -36,7 +36,7 @@ from nicos.core.status import BUSY, DISABLED, ERROR, NOTREACHED, OK, UNKNOWN, \
 from nicos.guisupport.qt import QBrush, QByteArray, QColor, QComboBox, \
     QCursor, QDialog, QDialogButtonBox, QFont, QIcon, QInputDialog, QMenu, \
     QMessageBox, QPalette, QPushButton, QRegExp, Qt, QTreeWidgetItem, \
-    pyqtSignal, pyqtSlot
+    pyqtSignal, pyqtSlot, sip
 from nicos.guisupport.typedvalue import DeviceParamEdit, DeviceValueEdit
 from nicos.protocols.cache import OP_TELL, cache_dump, cache_load
 from nicos.pycompat import iteritems, itervalues, srepr, string_types
@@ -183,6 +183,7 @@ class DevicesPanel(Panel):
     """
 
     panelName = 'Devices'
+    ui = 'panels/devices.ui'
 
     @classmethod
     def _createIcons(cls):
@@ -201,7 +202,7 @@ class DevicesPanel(Panel):
     def __init__(self, parent, client, options):
         DevicesPanel._createIcons()
         Panel.__init__(self, parent, client, options)
-        loadUi(self, 'panels/devices.ui')
+        loadUi(self, self.ui)
         self.useicons = bool(options.get('icons', True))
         self.param_display = {}
         param_display = options.get('param_display', {})
@@ -315,6 +316,11 @@ class DevicesPanel(Panel):
 
         for devname in devlist:
             self._create_device_item(devname)
+
+        # close all control dialogs for now nonexisting devices
+        for ldevname in list(self._control_dialogs):
+            if ldevname not in self._devitems:
+                self._control_dialogs[ldevname].close()
 
         # add all toplevel items to the tree, sorted
         for cat in self._catitems:
@@ -708,8 +714,9 @@ class DevicesPanel(Panel):
         return dlg
 
     def _control_dialog_closed(self, ldevname):
-        dlg = self._control_dialogs.pop(ldevname)
-        dlg.deleteLater()
+        dlg = self._control_dialogs.pop(ldevname, None)
+        if dlg:
+            dlg.deleteLater()
 
     # API shared with ControlDialog
 
@@ -763,6 +770,15 @@ class ControlDialog(QDialog):
 
     def _reinit(self):
         classes = self.devinfo.classes
+
+        if sip.isdeleted(self.devitem):
+            # The item we're controlling has been removed from the list (e.g.
+            # due to client reconnect), get it again.
+            self.devitem = self.device_panel._devitems.get(self.devname.lower())
+            # No such device anymore...
+            if self.devitem is None:
+                self.close()
+                return
 
         self.deviceName.setText('Device: %s' % self.devname)
         self.setWindowTitle('Control %s' % self.devname)
@@ -857,7 +873,11 @@ class ControlDialog(QDialog):
             menu.addAction(self.actionAdjustOffset)
         if 'nicos.devices.abstract.CanReference' in classes:
             menu.addAction(self.actionReference)
+        if 'nicos.devices.abstract.Coder' in classes:
+            menu.addAction(self.actionSetPosition)
         if 'nicos.core.device.Moveable' in classes:
+            if not menu.isEmpty():
+                menu.addSeparator()
             menu.addAction(self.actionFix)
             menu.addAction(self.actionRelease)
         if 'nicos.core.mixins.CanDisable' in classes:
@@ -996,19 +1016,39 @@ class ControlDialog(QDialog):
         self.device_panel.exec_command('set(%s, "userlimits", %s)' %
                                        (self.devrepr, newlimits))
 
-    @pyqtSlot()
-    def on_actionAdjustOffset_triggered(self):
-        dlg = dialogFromUi(self, 'panels/devices_adjust.ui')
-        dlg.descLabel.setText('Adjust offset of %s:' % self.devname)
+    def _get_new_value(self, window_title, desc):
+        dlg = dialogFromUi(self, 'panels/devices_newpos.ui')
+        dlg.setWindowTitle(window_title)
+        dlg.descLabel.setText(desc)
         dlg.oldValue.setText(self.valuelabel.text())
         target = DeviceValueEdit(dlg, dev=self.devname)
         target.setClient(self.client)
         dlg.targetLayout.addWidget(target)
+        target.setFocus()
         res = dlg.exec_()
         if res != QDialog.Accepted:
-            return
-        self.device_panel.exec_command(
-            'adjust(%s, %r)' % (self.devrepr, target.getValue()))
+            return None
+        return target.getValue()
+
+    @pyqtSlot()
+    def on_actionAdjustOffset_triggered(self):
+        val = self._get_new_value('Adjust NICOS offset',
+                                  'Adjust NICOS offset of %s:' % self.devname)
+        if val is not None:
+            self.device_panel.exec_command(
+                'adjust(%s, %r)' % (self.devrepr, val))
+
+    @pyqtSlot()
+    def on_actionSetPosition_triggered(self):
+        val = self._get_new_value('Set hardware position',
+                                  'Set hardware position of %s:' % self.devname)
+        if val is not None:
+            if self.devrepr != self.devname:
+                cmd = 'CreateDevice(%s); %s.setPosition(%r)' % \
+                      (self.devrepr, self.devname, val)
+            else:
+                cmd = '%s.setPosition(%r)' % (self.devname, val)
+            self.device_panel.exec_command(cmd)
 
     @pyqtSlot()
     def on_actionReference_triggered(self):

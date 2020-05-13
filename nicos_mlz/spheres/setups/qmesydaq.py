@@ -28,7 +28,6 @@ devices = dict(
         description = 'QMesyDAQ Image type Detector',
         timers = ['mesytimer'],
         counters = ['events'],
-        monitors = [],
         images = ['mesyimg'],
         liveinterval = 1.,
     ),
@@ -49,3 +48,5 @@ devices = dict(
         tacodevice = qm + 'timer'
     ),
 )
+
+startupcode = 'SetDetectors(sis, mesy)'

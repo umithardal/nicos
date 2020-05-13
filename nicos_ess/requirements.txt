@@ -1,8 +1,3 @@
 kafka-python
-pvapy
-PyQt5
-PyQtWebEngine
-pyepics
 flatbuffers
-https://github.com/ess-dmsc/python-streaming-data-types/releases/download/v0.2.0/streaming_data_types-0.2.0-py3-none-any.whl
-
+ess-streaming-data-types==0.4.1

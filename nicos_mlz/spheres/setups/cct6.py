@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 description = 'Setup for the sample environment.'
-group = 'optional'
+group = 'lowlevel'
 
 tangohost = 'phys.spheres.frm2'
 tango_sample = 'tango://%s:10000/spheres/cct6/' % tangohost
@@ -10,8 +10,8 @@ devices = dict(
     cct6_c_temperature = device('nicos_mlz.spheres.devices.sample.SEController',
         description = 'Temperaturecontroller',
         tangodevice = tango_sample + 'controller',
-        samplecontroller = 'T_sample',
-        tubecontroller = 'T_tube',
+        samplecontroller = 'cct6_T_sample',
+        tubecontroller = 'cct6_T_tube',
         pollinterval = 1,
         maxage = 5,
         precision = 0.1
@@ -89,8 +89,8 @@ devices = dict(
     cct6_setpoint = device('nicos.devices.generic.paramdev.ReadonlyParamDevice',
         description = 'Device to display the setpoint parameter of the '
         'temperature controller',
-        device = 'c_temperature',
-        parameter = 'target',
+        device = 'cct6_c_temperature',
+        parameter = 'devtarget',
         unit = 'K'
     ),
 )

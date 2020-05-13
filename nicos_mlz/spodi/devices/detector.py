@@ -120,7 +120,7 @@ class Detector(MeasureSequencer):
             (self.resosteps - 1) * self._step_size
         self.log.debug('det._startpos: %r', self._startpos)
         self._setROParam('rates', [0., 0., 0.])
-        session.data.updateMetainfo()
+        session.experiment.data.updateMetainfo()
 
         self._last_live = 0
         self._step = 0
@@ -176,7 +176,7 @@ class Detector(MeasureSequencer):
             self._array_data[self._step::self.resosteps] = imgret
         return [self._array_data]
 
-    def _generateSequence(self, *args, **kwargs):
+    def _generateSequence(self):
         seq = []
         if self._tths:
             self._startpos = self._tths

@@ -98,6 +98,11 @@ A simple setup file for the watchdog could look like this::
 The parameter ``cache`` must point to the ``host:port`` address of the cache to
 connect to.
 
+.. _watch-conditions:
+
+Watch conditions
+----------------
+
 The most important parameter for the ``Watchdog`` device is the ``watch`` list.
 It is a list of dictionaries, each of which specifies one condition.  The
 specification can have these keys:
@@ -124,6 +129,17 @@ specification can have these keys:
 **setup**
    If present, the name of a setup that must be loaded in the NICOS master for
    this condition to be active.  By default, the condition is always active.
+
+   If the condition is defined not in the main watchdog setup, but in the
+   ``watch_conditions`` list of a different setup, it is never active if
+   that setup isn't loaded.  It can be further restricted, however, by
+   this setting.
+
+**enabled**
+   A boolean value; if false, the condition is prevented from triggering when
+   the watchdog starts.  Defaults to True.  Since users can activate conditions
+   at runtime from the GUI, this setting is useful to provide predefined
+   conditions that are not generally needed, but useful in special circumstances.
 
 **gracetime**
    The time, in seconds, which the watchdog waits after a condition becomes true

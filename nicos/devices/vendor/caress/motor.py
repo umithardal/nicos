@@ -70,7 +70,7 @@ class Motor(HasOffset, Driveable, AbstractMotor):
         raw = Driveable.doRead(self, maxage)
         if raw is None and session.sessiontype == POLLER:
             return None
-        self.log.debug('Raw  value: %r', raw)
+        self.log.debug('raw value: %r', raw)
         return raw - (self.coderoffset + self.offset)
 
     def doSetPosition(self, pos):
@@ -139,7 +139,7 @@ class EKFMotor(SequencerMixin, Motor):
             tmp[12] = '%d' % self.stopdelay
             self._setROParam('config', ' '.join(tmp))
 
-    def _generateSequence(self, target):  # pylint: disable=W0221
+    def _generateSequence(self, target):
         return [SeqCall(Motor.doStart, self, target),
                 SeqCall(self._hw_wait),
                 SeqSleep(self.stopdelay),

@@ -106,7 +106,7 @@ class BaseCacheClient(Device):
         self.log.debug('connecting to %s', self.cache)
         try:
             self._socket = tcpSocket(self.cache, DEFAULT_CACHE_PORT,
-                                     timeout=5)
+                                     timeout=5, keepalive=10)
         except Exception as err:
             self._disconnect('unable to connect to %s: %s' %
                              (self.cache, err))
@@ -540,6 +540,14 @@ class CacheClient(BaseCacheClient):
             return
         key = key[len(self._prefix):]
         time = time and float(time)
+
+        # ignore outdated 'updates'
+        db_time = self._db.get(key, (0, 0))[1]
+        if db_time > time:
+            self.log.debug('ignoring outdated update for %s: %gs too old', key,
+                           db_time - time)
+            return
+
         self._propagate((time, key, op, value))
         # self.log.debug('got %s=%s', key, value)
         if not value or op == OP_TELLOLD:
@@ -552,8 +560,8 @@ class CacheClient(BaseCacheClient):
             if self._do_callbacks:
                 if key in self._callbacks:
                     self._call_callbacks(key, value, time)
-                if key.endswith('/value') and session.data:
-                    session.data.cacheCallback(key, value, time)
+                if key.endswith('/value') and session.experiment:
+                    session.experiment.data.cacheCallback(key, value, time)
 
     def _call_callbacks(self, key, value, time):
         with self._dblock:
@@ -648,6 +656,15 @@ class CacheClient(BaseCacheClient):
                     default)
         return (None, None, default)  # shouldn't happen
 
+    def get_raw(self, key, default=None):
+        """Get a value from the cache server by full name."""
+        tosend = '%s%s\n' % (key, OP_ASK)
+        for msgmatch in self._single_request(tosend):
+            value = msgmatch.group('value')
+            if value:
+                return cache_load(value)
+        return default
+
     def put(self, dev, key, value, time=None, ttl=None, flag=''):
         """Put a value for a given device and subkey.
 
@@ -668,8 +685,8 @@ class CacheClient(BaseCacheClient):
         # self.log.debug('putting %s=%s', dbkey, value)
         self._queue.put(msg)
         self._propagate((time, dbkey, OP_TELL, dvalue))
-        if key == 'value' and session.data:
-            session.data.cacheCallback(dbkey, value, time)
+        if key == 'value' and session.experiment:
+            session.experiment.data.cacheCallback(dbkey, value, time)
         # we have to check rewrites here, since the cache server won't send
         # us updates for a rewritten key if we sent the original key
         if str(dev).lower() in self._rewrites:
@@ -678,8 +695,8 @@ class CacheClient(BaseCacheClient):
                 with self._dblock:
                     self._db[rdbkey] = (value, time)
                 self._propagate((time, rdbkey, OP_TELL, dvalue))
-                if key == 'value' and session.data:
-                    session.data.cacheCallback(rdbkey, value, time)
+                if key == 'value' and session.experiment:
+                    session.experiment.data.cacheCallback(rdbkey, value, time)
 
     def put_raw(self, key, value, time=None, ttl=None, flag=''):
         """Put a key given by full name.

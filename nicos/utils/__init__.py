@@ -54,8 +54,8 @@ from time import localtime, mktime, sleep, strftime, strptime, \
 # session dependent nicos utilities should be implemented in nicos.core.utils
 from nicos import config, get_custom_version, nicos_version
 # pylint: disable=redefined-builtin
-from nicos.pycompat import PY2, exec_, iteritems, string_types, text_type, \
-    xrange as range
+from nicos.pycompat import PY2, iteritems, string_types, text_type, \
+    xrange as range, zip
 
 try:
     import pwd
@@ -235,10 +235,19 @@ def formatDuration(secs, precise=True):
         else:
             est = '%s min' % int(secs / 60. + 0.5)
     elif secs < 86400:
-        est = '%s h, %s min' % (int(secs / 3600.), int((secs % 3600) / 60. + 0.5))
+        hrs = int(secs / 3600.)
+        mins = int((secs % 3600) / 60. + 0.5)
+        if mins == 60:
+            hrs += 1
+            mins = 0
+        est = '%s h, %s min' % (hrs, mins)
     else:
-        est = '%s day%s, %s h' % (_s(secs // 86400) +
-                                  (int((secs % 86400) / 3600. + 0.5),))
+        days = int(secs / 86400.)
+        hrs = int((secs % 86400) / 3600. + 0.5)
+        if hrs == 24:
+            days += 1
+            hrs = 0
+        est = '%s day%s, %s h' % (_s(days) + (hrs,))
     return est
 
 
@@ -364,13 +373,16 @@ def parseHostPort(host, defaultport, missingportok=False):
     return host, port
 
 
-def tcpSocket(host, defaultport, timeout=None):
+def tcpSocket(host, defaultport, timeout=None, keepalive=None):
     """Helper for opening a TCP client socket to a remote server.
 
     Specify 'host[:port]' or a (host, port) tuple for the mandatory argument.
     If the port specification is missing, the value of the defaultport is used.
     If timeout is set to a number, the timout of the connection is set to this
     number, else the socket stays in blocking mode.
+
+    If *keepalive* is given, enable TCP keepalive and set the keepalive
+    interval to that amount of seconds.
     """
     host, port = parseHostPort(host, defaultport)
 
@@ -384,6 +396,14 @@ def tcpSocket(host, defaultport, timeout=None):
     except socket.error:
         closeSocket(s)
         raise
+    if keepalive:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if hasattr(socket, 'TCP_KEEPCNT'):
+            s.setsockopt(socket.SOL_TCP, socket.TCP_KEEPCNT, 3)
+        if hasattr(socket, 'TCP_KEEPINTVL'):
+            s.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, keepalive)
+        if hasattr(socket, 'TCP_KEEPIDLE'):
+            s.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, keepalive)
     return s
 
 
@@ -533,7 +553,7 @@ def terminalSize():
 
 def parseConnectionString(s, defport):
     """Parse a string in the format 'user:pass@host:port"."""
-    res = re.match(r"(?:(\w+)(?::([^@]*))?@)?([\w.-]+)(?::(\d+))?", s)
+    res = re.match(r"(?:([^:]+)(?::([^@]*))?@)?([\w.-]+)(?::(\d+))?$", s)
     if res is None:
         return None
     return {
@@ -657,7 +677,7 @@ def moveOutOfWay(filepath, maxbackups=10):
 
 
 def safeWriteFile(filepath, content, mode='w', maxbackups=10):
-    """(almost) atomic writing of a file
+    """(Almost) atomic writing of a file.
 
     The content is first written to a temporary file and then swapped in while
     keeping a backup file.
@@ -711,10 +731,10 @@ def ensureDirectory(dirname, enableDirMode=DEFAULT_DIR_MODE, **kwargs):
 def enableDisableFileItem(filepath, mode, owner=None, group=None, logger=None):
     """Set mode and maybe change uid/gid of a filesystem item."""
     if (owner or group) and pwd and hasattr(os, 'chown') and hasattr(os, 'stat'):
-        stats = os.stat(filepath)  # only change the requested parts
-        owner = owner or stats.st_uid
-        group = group or stats.st_gid
         try:
+            stats = os.stat(filepath)  # only change the requested parts
+            owner = owner or stats.st_uid
+            group = group or stats.st_gid
             if isinstance(owner, string_types):
                 owner = pwd.getpwnam(owner)[2]
             if isinstance(group, string_types):
@@ -1448,7 +1468,7 @@ class FitterRegistry(object):
 
 keyexpr_re = re.compile(r'(?P<dev_or_key>[a-zA-Z_0-9./]+)'
                         r'(?P<indices>(?:\[[0-9]+\])*)'
-                        r'(?P<scale>\*[0-9.]+(?:[eE][+-]?[0-9]+)?)?'
+                        r'(?P<scale>\*-?[0-9.]+(?:[eE][+-]?[0-9]+)?)?'
                         r'(?P<offset>[+-][0-9.]+(?:[eE][+-]?[0-9]+)?)?$')
 
 
@@ -1663,3 +1683,14 @@ def getNumArgs(obj):
     return sum(1 for p in sig.parameters.values()
                if p.kind == inspect.Parameter.POSITIONAL_ONLY or
                p.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD)
+
+
+def tupelize(iterable, n=2):
+    """Convert an iterable into a pairwise tuple iterable.
+
+    s -> (s0,s1), (s2,s3), (s4, s5), ...  for n=2
+    s -> (s0, s1, s2), (s2, s3, s4), ...  for n=3
+
+    Leftover elements at the end are ignored.
+    """
+    return zip(*(iter(iterable),) * n)

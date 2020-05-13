@@ -16,7 +16,6 @@ includes = [
     'gonio_top',
     'guidehall',
     'h2',
-    'height',
     'memograph',
     'nl2b',
     'optic_elements',
@@ -28,12 +27,9 @@ includes = [
     'resolution',
     'safedetectorsystem',
     'safetysystem',
-    'sample',
-    #'samplechanger',
+    'd_last_slit_sample',
+    # 'samplechanger',
     'shutter',
     'shutter_gamma',
     'vsd',
 ]
-
-startupcode = '''
-'''

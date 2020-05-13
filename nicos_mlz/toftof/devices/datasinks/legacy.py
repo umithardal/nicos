@@ -46,10 +46,10 @@ class TofImageSinkHandler(TofSinkHandler):
         self._logtemplate = self._template[0].replace('.raw', '.log')
 
     def prepare(self):
-        session.data.assignCounter(self.dataset)
-        self._datafile = session.data.createDataFile(
+        self.manager.assignCounter(self.dataset)
+        self._datafile = self.manager.createDataFile(
             self.dataset, self._template, self._subdir)
-        self._logfile = session.data.createDataFile(
+        self._logfile = self.manager.createDataFile(
             self.dataset, self._logtemplate, self._subdir, nomeasdata=True)
 
     def begin(self):
@@ -152,20 +152,22 @@ class TofImageSinkHandler(TofSinkHandler):
             fp.write(to_utf8('%s\n' % line))
         fp.flush()
 
-    def _writeLogs(self, fp, stats):
+    def _writeLogs(self):
+        if not self._logfile:
+            return
         loglines = []
         loglines.append('%-15s\tmean\tstdev\tmin\tmax' % '# dev')
         for dev in self.dataset.valuestats:
             loglines.append('%-15s\t%.3f\t%.3f\t%.3f\t%.3f' %
                             ((dev,) + self.dataset.valuestats[dev]))
-        fp.seek(0)
+        self._logfile.seek(0)
         for line in loglines:
-            fp.write(to_utf8('%s\n' % line))
-        fp.flush()
+            self._logfile.write(to_utf8('%s\n' % line))
+        self._logfile.flush()
 
     def writeData(self, fp, info, data):
         lines = []
-        f = session.data.createDataFile(self.dataset,
+        f = self.manager.createDataFile(self.dataset,
                                         [self._template[0] + '.new'],
                                         self._subdir, nomeasdata=True)
         self._writeHeader(f, self.dataset.metainfo)
@@ -259,7 +261,7 @@ class TofImageSinkHandler(TofSinkHandler):
                     self.writeData(self._datafile, info, data)
 
     def end(self):
-        self._writeLogs(self._logfile, self.dataset.valuestats)
+        self._writeLogs()
         if self._datafile:
             self._datafile.close()
         if self._logfile:

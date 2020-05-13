@@ -31,12 +31,12 @@ from __future__ import absolute_import, division, print_function
 from collections import namedtuple
 
 from nicos import session
-from nicos.core import FINAL, INTERMEDIATE, INTERRUPTED, LIVE, NicosError, \
-    Param, UsageError, oneof, status
+from nicos.core import FINAL, INTERMEDIATE, LIVE, NicosError, Param, \
+    UsageError, oneof, status
 from nicos.core.constants import SIMULATION
 from nicos.core.params import Attach, Value, listof
 from nicos.devices.generic.detector import Detector
-from nicos.devices.tango import ImageChannel, NamedDigitalOutput
+from nicos.devices.tango import BaseImageChannel, NamedDigitalOutput
 
 from nicos_mlz.spheres.devices.doppler import ELASTIC, INELASTIC
 
@@ -70,7 +70,7 @@ ChopperHisto = namedtuple('ChopperHisto', 'angle '
                                           't_refl t_open')
 
 
-class SISChannel(ImageChannel):
+class SISChannel(BaseImageChannel):
     """
     Spheres SIS ImageChannel
     """
@@ -127,11 +127,14 @@ class SISChannel(ImageChannel):
         'backzerorange':     Param('Range of the pst zero passes for the last'
                                    'chopstatisticlen pst revolutions',
                                    type=listof(float),
-                                   volatile=True)
+                                   volatile=True),
+        'measuremode':       Param('Mode in which the detector is measuring',
+                                   type=oneof(ELASTIC, INELASTIC, SIMULATION),
+                                   volatile=True),
     }
 
     def __init__(self, name, **config):
-        ImageChannel.__init__(self, name, **config)
+        BaseImageChannel.__init__(self, name, **config)
 
         self._block = []
         self._reason = ''
@@ -141,11 +144,6 @@ class SISChannel(ImageChannel):
     def clearAccumulated(self):
         self._last_edata = None
         self._last_cdata = None
-
-    def getMode(self):
-        if session.sessiontype == SIMULATION:
-            return
-        return self._dev.GetMeasureMode()
 
     def doReadElasticparams(self):
         return [self._dev.tscan_interval,
@@ -197,6 +195,11 @@ class SISChannel(ImageChannel):
     def doReadBackzerorange(self):
         return [self._dev.backgr_zero_min, self._dev.backgr_zero_max]
 
+    def doReadMeasuremode(self):
+        if session.sessiontype == SIMULATION:
+            return SIMULATION
+        return self._dev.GetMeasureMode()
+
     def setTscanAmount(self, amount):
         if session.sessiontype == SIMULATION:
             return
@@ -209,17 +212,15 @@ class SISChannel(ImageChannel):
         self._hw_wait()
 
     def doReadArray(self, quality):
-        self.readresult = [sum(self._dev.value)]
-        mode = self.getMode()
+        mode = self.measuremode
+
+        if mode == SIMULATION:
+            return []
 
         if quality == LIVE:
             return [self._readLiveData()]
-        elif quality == INTERMEDIATE:
-            self._reason = 'intermediate'
-        elif quality == FINAL:
-            self._reason = 'final'
-        elif quality == INTERRUPTED:
-            self._reason = 'interrupted'
+        else:
+            self._reason = quality
 
         if mode == ELASTIC:
             return self._readElastic()
@@ -235,7 +236,7 @@ class SISChannel(ImageChannel):
         return Value(name=TOTAL, type="counter", fmtstr="%d", unit="cts"),
 
     def _readLiveData(self):
-        if self.getMode() == INELASTIC:
+        if self.measuremode == INELASTIC:
             if self._last_edata is not None:
                 if self.incremental:
                     live = self._readData(ENERGY)
@@ -266,8 +267,16 @@ class SISChannel(ImageChannel):
         edata = self._readData(ENERGY)
         cdata = self._readData(CHOPPER)
 
-        self._incrementCounts(edata, cdata)
-        return (live, params, self._last_edata, self._last_cdata)
+        if self.incremental:
+            if self._reason == FINAL:
+                self._processCounts(edata, cdata)
+                edata = self._last_edata
+                cdata = self._last_cdata
+            else:
+                self._mergeCounts(edata, self._last_edata)
+                self._mergeCounts(cdata, self._last_cdata)
+
+        return live, params, edata, cdata
 
     def _readData(self, target):
         '''Read the requested data from the hardware and generate the according
@@ -290,8 +299,9 @@ class SISChannel(ImageChannel):
         rawdatasize = len(rawdata)
 
         data = []
-
-        amount = rawdatasize // (xvalsize*self.detamount*2)
+        amount = rawdatasize // (xvalsize * self.detamount * 2)
+        if target in [ENERGY, TIME]:
+            self.readresult = [sum(rawdata[:rawdatasize // 2])]
         counts = rawdata[:rawdatasize // 2].reshape(amount, xvalsize,
                                                     self.detamount)
         times = rawdata[rawdatasize // 2:].reshape(amount, xvalsize,
@@ -327,6 +337,8 @@ class SISChannel(ImageChannel):
         Increments the first array, entry by entry with the corresponding
         entries from the second array.
         """
+        if not increment:
+            return
 
         for i, entry in enumerate(total):
             for j, arr in enumerate(entry):
@@ -334,12 +346,12 @@ class SISChannel(ImageChannel):
                     continue
                 arr.__iadd__(increment[i][j])
 
-    def _incrementCounts(self, edata, cdata):
+    def _processCounts(self, edata, cdata):
         """
-        Increment accumulated data by the given data
+        Set data arrays to the right values for further processing.
         """
 
-        if self._last_edata is None or not self.incremental:
+        if self._last_edata is None:
             self._last_edata = edata
             self._last_cdata = cdata
             return
@@ -398,8 +410,8 @@ class SISDetector(Detector):
         self._saveIntermediateFlag = True
 
     def _saveIntermediate(self):
-        session.data.putResults(INTERMEDIATE,
-                                {self.name: self.readResults(INTERMEDIATE)})
+        session.experiment.data.putResults(
+            INTERMEDIATE, {self.name: self.readResults(INTERMEDIATE)})
 
     def duringMeasureHook(self, elapsed):
         if self._saveIntermediateFlag:

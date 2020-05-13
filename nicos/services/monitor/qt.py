@@ -101,7 +101,10 @@ class MonitorWindow(QMainWindow):
             # screen window is actually made larger than the full screen
             self.resize(self.sizeHint())
             if self._wantFullScreen:
-                self.showFullScreen()
+                if QT_VER == 5:
+                    self.setGeometry(QApplication.screens()[0].geometry())
+                else:
+                    self.showFullScreen()
         return QMainWindow.event(self, event)
 
     def do_reconfigure(self, emitdict):
@@ -350,6 +353,7 @@ class Monitor(BaseMonitor):
             for column in superrow:
                 columnlayout = QVBoxLayout(spacing=0.8*blheight)
                 for block in column:
+                    block = self._resolve_block(block)
                     blocklayout_outer = QHBoxLayout()
                     blocklayout_outer.addStretch()
                     blocklayout = QVBoxLayout()

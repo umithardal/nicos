@@ -2,7 +2,7 @@ description = 'PANDA Cu-monochromator'
 
 group = 'lowlevel'
 
-includes = ['monofoci', 'monoturm', 'panda_s7']
+includes = ['monofoci', 'monoturm', 'panda_mtt']
 
 excludes = ['mono_pg', 'mono_si', 'mono_heusler']
 
@@ -62,7 +62,6 @@ devices = dict(
     mfh_cu = device('nicos.devices.generic.Axis',
         description = 'horizontal focus of Cu monochromator',
         motor = 'mfh_cu_step',
-        coder = 'mfh_cu_step',
         obs = ['mfh_cu_poti'],
         precision = 0.01,
         backlash = 0,
@@ -106,7 +105,6 @@ devices = dict(
     mfv_cu = device('nicos.devices.generic.Axis',
         description = 'vertical focus of Cu monochromator',
         motor = 'mfv_cu_step',
-        coder = 'mfv_cu_step',
         obs = ['mfv_cu_poti'],
         precision = 0.01,
         backlash = 0,

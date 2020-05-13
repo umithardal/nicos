@@ -84,6 +84,7 @@ class DataSinkHandler(object):
         self.sink = sink
         self.dataset = dataset
         self.detector = detector
+        self.manager = session.experiment.data
 
     def prepare(self):
         """Prepare writing this dataset.
@@ -155,7 +156,14 @@ class DataSinkHandler(object):
         """
 
     def end(self):
-        """Finish up the dataset (close files etc)."""
+        """Finish up the dataset (close files etc).
+
+        This method is called on all sinks participating in a dataset, even if
+        an error occurred during data collection or even initialization.
+
+        Therefore, the method cannot expect that even its own `prepare()` has
+        been called successfully.
+        """
 
 
 class NicosMetaWriterMixin(object):
@@ -226,7 +234,6 @@ class NicosMetaWriterMixin(object):
             wrapper.write('\n%r' % self._arraydesc)
         wrapper.write('\n')
         wrapper.detach()
-
 
 
 class DataSink(Device):

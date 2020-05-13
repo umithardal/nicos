@@ -55,11 +55,11 @@ devices = dict(
         detectors = ['pilatus'],
         filenametemplate = [
             '%(session.experiment.users)s_'
-            '%(session.experiment.sample.samplename)s_'
+            '%(session.experiment.sample.filename)s_'
             '%(scancounter)s.%(pointnumber)s.tif',
         ],
     ),
-    pilatus_image = device('nicos_mlz.jcns.devices.detector.ImageChannel',
+    pilatus_image = device('nicos.devices.tango.ImageChannel',
         description = 'Image channel of the DECTRIS Pilatus 1M detector.',
         tangodevice = tango_base + 'pilatus_det/image_channel',
     ),

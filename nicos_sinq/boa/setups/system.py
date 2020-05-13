@@ -11,9 +11,11 @@ sysconfig = dict(
 
 modules = [
     'nicos.commands.standard', 'nicos_sinq.commands.sics',
-    'nicos_sinq.commands.hmcommands', 'nicos_sinq.commands.epicscommands'
+    'nicos_sinq.commands.hmcommands', 'nicos_sinq.commands.epicscommands',
+    'nicos_sinq.boa.commands.boasetup'
 ]
 
+includes = ['table2', 'table3', 'table4', 'table5', 'table6']
 devices = dict(
     BOA = device('nicos.devices.instrument.Instrument',
         description = 'instrument object',
@@ -37,6 +39,11 @@ devices = dict(
         description = 'The amount of free space for storing data',
         path = None,
         minfree = 5,
+    ),
+    iocrestart = device('nicos_sinq.devices.procdevice.ProcDevice',
+        description = 'BOA IOC restart device',
+        subprocess = 'nicos_sinq/boa/bin/restartboaioc.sh',
+        args = []
     ),
     conssink = device('nicos.devices.datasinks.ConsoleScanSink'),
     dmnsink = device('nicos.devices.datasinks.DaemonSink'),

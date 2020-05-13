@@ -43,7 +43,7 @@ from nicos.core.sessions.utils import EXECUTIONMODES
 from nicos.core.spm import AnyDev, Bool, DeviceName, Multi, Num, Oneof, \
     SetupName, String, spmsyntax
 from nicos.devices.notifiers import Mailer
-from nicos.pycompat import builtins, exec_, iteritems
+from nicos.pycompat import builtins, exec_, iteritems, string_types
 from nicos.utils import fixupScript, formatArgs, formatDuration, printTable, \
     reexecProcess, resolveClasses
 from nicos.utils.timer import Timer
@@ -359,6 +359,8 @@ def CreateDevice(*devnames):
     see also: `CreateAllDevices`, `RemoveDevice`
     """
     for devname in devnames:
+        if not isinstance(devname, string_types):
+            raise UsageError('CreateDevice() arguments must be strings')
         session.createDevice(devname, explicit=True)
 
 
@@ -441,17 +443,14 @@ def NewExperiment(proposal, title='', localcontact='', user='', **parameters):
 
 
 @usercommand
-@helparglist('...')
-def FinishExperiment(*args, **kwargs):
+def FinishExperiment():
     """Finish the current experiment.
-
-    Which parameters are accepted depends on the individual instrument.
 
     see also: `NewExperiment`
     """
     if session.mode == SIMULATION:
         return
-    session.experiment.finish(*args, **kwargs)
+    session.experiment.finish()
 
 
 @hiddenusercommand

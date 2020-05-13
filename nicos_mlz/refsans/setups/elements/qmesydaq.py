@@ -3,7 +3,9 @@ description = 'qmesydaq devices for REFSANS'
 # to be included by refsans ?
 group = 'lowlevel'
 
-nethost = 'refsanssrv.refsans.frm2'
+instrument_values = configdata('instrument.values')
+
+nethost = instrument_values['nethost']
 tacodev = '//%s/test/qmesydaq' % nethost
 
 sysconfig = dict(
@@ -24,10 +26,9 @@ devices = dict(
         subdir = 'list',
         filenametemplate = ['%(proposal)s_%(pointcounter)08d.mdat'],
     ),
-    # LiveViewSink = device('nicos.devices.datasinks.LiveViewSink',
-    #     description = 'Sends image data to LiveViewWidget',
-    #     filenametemplate=[],
-    # ),
+    LiveViewSink = device('nicos.devices.datasinks.LiveViewSink',
+        description = 'Sends image data to LiveViewWidget',
+    ),
     mon1 = device('nicos.devices.vendor.qmesydaq.taco.Counter',
         description = 'QMesyDAQ Counter0',
         tacodevice = '%s/counter0' % tacodev,
@@ -64,7 +65,6 @@ devices = dict(
     det = device('nicos.devices.generic.Detector',
         description = 'QMesyDAQ Image type Detector1',
         timers = ['timer'],
-        counters = [],
         monitors = ['mon1', 'mon2'],
         images = ['image'],
     ),

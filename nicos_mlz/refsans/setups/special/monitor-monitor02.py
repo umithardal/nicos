@@ -1,6 +1,14 @@
 # coding: utf-8
 
-description = 'Optic Collimation and Slits Monitor #02'
+# created by Martin Haese, Tel FRM 10763
+# last version by Gaetano Mangiapia, Tel 54839 on Jan 09th 2020
+
+# to call it
+# ssh -X refsans@refsansctrl01 oder 02
+# cd /refsanscontrol/src/nicos-core
+# INSTRUMENT=nicos_mlz.refsans bin/nicos-monitor -S monitor_chopper
+
+description = 'Optic Collimation and Slits [Monitor 02]'
 group = 'special'
 
 layout_width = 10
@@ -128,12 +136,11 @@ _collimationcol = Column(
 _ChopperBurg = Column(
     Block('Vertical Shifts for Optic Elements in the Chopper System', [
         BlockRow(Field(name=u'nok2\u1d63',  dev='nok2r_axis', width=layout_width, unit='(mm)'),
-                 Field(name=u'nok2\u209b',  dev='nok2r_axis', width=layout_width, unit='(mm)'),
-                 Field(name=u'nok2\u209b',  dev='nok2r_axis', width=layout_width, unit='(mm)'),
+                 Field(name=u'nok2\u209b',  dev='nok2s_axis', width=layout_width, unit='(mm)'),
                  Field(name=u'nok3\u1d63',  dev='nok3r_axis', width=layout_width, unit='(mm)'),
-                 Field(name=u'nok3\u209b',  dev='nok3r_axis', width=layout_width, unit='(mm)'),
+                 Field(name=u'nok3\u209b',  dev='nok3s_axis', width=layout_width, unit='(mm)'),
                  Field(name=u'nok4\u1d63',  dev='nok4r_axis', width=layout_width, unit='(mm)'),
-                 Field(name=u'nok4\u209b',  dev='nok4r_axis', width=layout_width, unit='(mm)'),
+                 Field(name=u'nok4\u209b',  dev='nok4s_axis', width=layout_width, unit='(mm)'),
                  Field(name=u'disk3',       dev='disc3', width=layout_width, unit='(mm)'),
                  Field(name=u'disk4',       dev='disc4', width=layout_width, unit='(mm)'),
                  Field(name=u'b\u2081',     dev='b1.center', width=layout_width, unit='(mm)'),
@@ -171,7 +178,6 @@ _SFKammer = Column(
     ),
 )
 
-
 _probort = Column(
     Block('Vertical/Horizontal Shifts for Optic Elements at Sample Position', [
         BlockRow(
@@ -184,7 +190,6 @@ _probort = Column(
     ),
 )
 
-
 _apertures_slits = Column(
     Block('Apertures for movable slits', [
         BlockRow(
@@ -192,7 +197,7 @@ _apertures_slits = Column(
                 Field(name=u'zb\u2083',    dev='zb3.height', width=layout_width, unit='(mm)'),
                 Field(name=u'bs\u2081',    dev='bs1.height', width=layout_width, unit='(mm)'),
                 Field(name=u'b\u2082',     dev='b2.height', width=layout_width, unit='(mm)'),
-                Field(name=u'h\u2082',     dev='h2.width', width=layout_width, unit='(mm)'),
+                Field(name=u'h\u2082',     dev='h2_width', width=layout_width, unit='(mm)'),
                 Field(name=u'b\u2083',     dev='b3.height', width=layout_width, unit='(mm)'),
                 Field(name=u'h\u2083',     dev='h3.height', width=layout_width, unit='(mm)'),
                 ),
@@ -200,10 +205,9 @@ _apertures_slits = Column(
     ),
 )
 
-
-
 devices = dict(
     Monitor = device('nicos.services.monitor.qt.Monitor',
+        showwatchdog = False,
         title = description,
         loglevel = 'info',
         cache = 'refsansctrl.refsans.frm2.tum.de',

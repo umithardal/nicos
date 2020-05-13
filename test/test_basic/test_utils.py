@@ -42,7 +42,7 @@ from nicos.utils import Repeater, bitDescription, checkSetupSpec, chunks, \
     formatExtendedFrame, formatExtendedStack, formatExtendedTraceback, \
     lazy_property, moveOutOfWay, num_sort, parseConnectionString, \
     parseDuration, readonlydict, readonlylist, safeWriteFile, squeeze, \
-    tcpSocket, timedRetryOnExcept
+    tcpSocket, timedRetryOnExcept, tupelize
 from nicos.utils.timer import Timer
 
 from test.utils import raises
@@ -108,23 +108,27 @@ def test_functions():
     assert formatDuration(4) == '4 seconds'
     assert formatDuration(154, precise=False) == '3 min'
     assert formatDuration(154, precise=True) == '2 min, 34 sec'
+    assert formatDuration(7199) == '2 h, 0 min'
     assert formatDuration(3700) == '1 h, 2 min'
     assert formatDuration(24 * 3600 + 7240, precise=False) == '1 day, 2 h'
+    assert formatDuration(48 * 3600 - 1) == '2 days, 0 h'
 
     assert bitDescription(0x5,
                           (0, 'a'),
                           (1, 'b', 'c'),
                           (2, 'd', 'e')) == 'a, c, d'
 
-    assert parseConnectionString('user:pass@host:1301', 1302) == \
-        {'user': 'user', 'password': 'pass', 'host': 'host', 'port': 1301}
-    assert parseConnectionString('user:@host:1301', 1302) == \
-        {'user': 'user', 'password': '', 'host': 'host', 'port': 1301}
+    assert parseConnectionString('u-ser@user.de:pass@host:1301', 1302) == \
+        {'user': 'u-ser@user.de', 'password': 'pass', 'host': 'host',
+         'port': 1301}
+    assert parseConnectionString('user:@host', 1302) == \
+        {'user': 'user', 'password': '', 'host': 'host', 'port': 1302}
     assert parseConnectionString('user@host:1301', 1302) == \
         {'user': 'user', 'password': None, 'host': 'host', 'port': 1301}
     assert parseConnectionString('user@ho-st:1301', 1302) == \
         {'user': 'user', 'password': None, 'host': 'ho-st', 'port': 1301}
     assert parseConnectionString('', 1302) is None
+    assert parseConnectionString('host?', 1302) is None
 
     # pylint: disable=range-builtin-not-iterating
     assert [tuple(x) for x in chunks(range(10), 3)] == \
@@ -362,9 +366,11 @@ def test_extract_key_and_index():
     assert extractKeyAndIndex('dev.key[0') == ('dev/key[0', (), 1, 0)
     assert extractKeyAndIndex('dev.key0]') == ('dev/key0]', (), 1, 0)
     assert extractKeyAndIndex('dev.key*10') == ('dev/key', (), 10, 0)
+    assert extractKeyAndIndex('dev.key*-10') == ('dev/key', (), -10, 0)
+    assert extractKeyAndIndex('dev.key * -1') == ('dev/key', (), -1, 0)
     assert extractKeyAndIndex('dev.key +5') == ('dev/key', (), 1, 5)
     assert extractKeyAndIndex('dev.key- 5') == ('dev/key', (), 1, -5)
-    assert extractKeyAndIndex('dev.key*10 +5') == ('dev/key', (), 10, 5)
+    assert extractKeyAndIndex('dev.key*10 -5') == ('dev/key', (), 10, -5)
     assert extractKeyAndIndex('dev.key[0] * 10+5') == ('dev/key', (0,), 10, 5)
     assert extractKeyAndIndex('dev*1.2e1 +5e-2') == ('dev/value', (), 12, 0.05)
     assert extractKeyAndIndex('dev*1e+1+5e1') == ('dev/value', (), 10, 50)
@@ -455,3 +461,11 @@ def test_safeWriteFile(tmpdir, maxbackup, content):
         assert len(open(fn1).readlines()) == len(content)
     else:
         assert len(open(fn1).read()) == len(content)
+
+
+def test_tupelize():
+    ilist = ['a', 1, 'b', 2, 'c', 3]
+    assert list(tupelize(ilist)) == [('a', 1), ('b', 2), ('c', 3)]
+    assert list(tupelize(ilist[:3])) == [('a', 1)]
+    assert list(tupelize(ilist, 3)) == [('a', 1, 'b'), (2, 'c', 3)]
+    assert list(tupelize(ilist[:4], 3)) == [('a', 1, 'b')]

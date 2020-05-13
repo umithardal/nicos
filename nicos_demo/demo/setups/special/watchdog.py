@@ -1,3 +1,4 @@
+
 description = 'setup for the NICOS watchdog'
 group = 'special'
 
@@ -33,14 +34,10 @@ watchlist = [
          type = 'critical',
          gracetime = 10,
     ),
-    dict(condition = 't_value > 300',
-         message = 'Temperature too high (exceeds 300 K)',
-         type = 'critical',
-         gracetime = 1,
-         action = 'maw(T, 290)'),
     dict(condition = 'phi_value > 100 and mono_value > 2.5',
          message = 'phi angle too high for current mono setting',
-         gracetime = 5),
+         gracetime = 5,
+         setup = 'tas'),
     dict(condition = 'tbefilter_value > 75',
          scriptaction = 'pausecount',
          setup = 'tas',
@@ -50,13 +47,13 @@ watchlist = [
          type = '',
          scriptaction = 'pausecount',
          message = 'Instrument shutter is closed',
-         gracetime = 0),
+         gracetime = 0,
+         setup = 'tas'),
     dict(condition = 'vacuum_value > 0.2',
          precondition = 'vacuum_value < 0.2',
          setup = 'vacuum',
          message = 'vacuum_value > 0.2 mbar',
-         type = 'critical',
-        ),
+         type = 'critical'),
     dict(condition = 'reactorpower_value < 10',
          precondition = 'reactorpower_value > 19.1',
          precondtime = 60,
@@ -64,13 +61,7 @@ watchlist = [
          message = 'Reactor power too low',
          type = 'critical',
          action = 'stop()',
-         gracetime = 30,),
-    # dict(condition = 'ReactorPower_value < 19',
-    #      # precondition = 'ReactorPower_value >= 19',
-    #      pausecount = True,
-    #      message = 'Reactor power is lower than 19 MW',
-    #      # action = '',
-    #      gracetime = 10, ),
+         gracetime = 30),
 ]
 
 # The Watchdog device has two lists of notifiers, one for priority 1 ('default')

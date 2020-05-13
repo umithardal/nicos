@@ -68,12 +68,13 @@ class KafkaStatusHandler(KafkaSubscriber, Readable):
         if session.sessiontype != POLLER:
             self.subscribe(self.statustopic)
 
-        # Be pessimistic and assume the process is down, if the process is up
-        # then the status will be remedied quickly.
+        # Be pessimistic and assume the process is down, if the process
+        # is up then the status will be remedied quickly.
         self._setROParam('nextupdate', currenttime())
 
         if self._mode == MASTER:
-            self._setROParam('curstatus', (status.WARN, 'Trying to connect...'))
+            self._setROParam('curstatus',
+                             (status.WARN, 'Trying to connect...'))
 
     def doRead(self, maxage=0):
         return ''
@@ -117,4 +118,3 @@ class KafkaStatusHandler(KafkaSubscriber, Readable):
         :param messages: dict of timestamp and message in JSON format
         """
         pass
-

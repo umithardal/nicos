@@ -58,7 +58,8 @@ _measurement = Column(
         BlockRow(Field(dev='pst'),
                  Field(dev='psz'),
                  Field(dev='psw'),
-                 Field(dev='psh'),),
+                 Field(dev='psh'),
+                 Field(dev='psx'),),
     ],
     setups = 'primaryslit* or vstressi',
     ),
@@ -69,7 +70,7 @@ _measurement = Column(
     setups = 'secondaryslit or vstressi',
     ),
     Block('Radial collimator', [
-        BlockRow(Field(dev='mot1'),
+        BlockRow(Field(dev='rcdet'),
                  Field(dev='rad_fwhm'),),
     ],
     setups = 'radial',

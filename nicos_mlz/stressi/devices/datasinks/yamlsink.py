@@ -261,8 +261,8 @@ class YamlDatafileSinkHandler(AsciiScanfileSinkHandler):
         if self._data is None:
             self._data = self._dict()
             self._scan_type = 'SGEN1'
-        self._number = session.data.assignCounter(self.dataset)
-        fp = session.data.createDataFile(self.dataset, self._template[0])
+        self._number = self.manager.assignCounter(self.dataset)
+        fp = self.manager.createDataFile(self.dataset, self._template[0])
         self._fname = fp.shortpath
         self._filepath = fp.filepath
         if not quickyaml:
@@ -464,11 +464,13 @@ class YamlDatafileSinkHandler(AsciiScanfileSinkHandler):
     def end(self):
         if self.dataset.settype == POINT:
             return
-        history = self._data['measurement']['history']
-        history['stopped'] = time.strftime(TIMEFMT)
-        self._dump()
-        self._file.flush()
-        self._file.close()
+        if self._data:
+            history = self._data['measurement']['history']
+            history['stopped'] = time.strftime(TIMEFMT)
+            self._dump()
+        if self._file:
+            self._file.flush()
+            self._file.close()
         self._file = None
         self._data = None
 

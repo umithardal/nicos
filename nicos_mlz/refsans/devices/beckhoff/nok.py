@@ -62,7 +62,7 @@ class BeckhoffCoderBase(PyTangoDevice, Coder):
                          settable=False, userparam=False),
         'ruler': Param('z-position of encoder in beam',
                        type=float, default=0.0, mandatory=False,
-                       settable=False, userparam=True),
+                       settable=False, userparam=False),
         'slope': Param('Slope of the Motor in FULL steps per physical '
                        'unit', type=float, default=10000.,
                        unit='steps/main', userparam=False,
@@ -331,6 +331,12 @@ class BeckhoffMotorBase(CanReference, BeckhoffCoderBase, Motor):
         'firmware': Param('firmware version',
                           type=str, settable=False, userparam=True,
                           volatile=True),
+        'maxtemp': Param('Maximum motor temperature',
+                         type=floatrange(0), settable=False, userparam=True,
+                         default=40.),
+        'waittime': Param('Time to cool down',
+                          type=floatrange(0), settable=False, userparam=True,
+                          default=20.),
     }
 
     #
@@ -354,17 +360,17 @@ class BeckhoffMotorBase(CanReference, BeckhoffCoderBase, Motor):
 
     def _HW_reference(self):
         """Do the referencing and update position to refpos"""
-        self._writeControlBit(4, 1)     # docu: bit4 = reference, autoresets
-        session.delay(0.1)             # work around race conditions....
+        # self._writeControlBit(4, 1)  # docu: bit4 = reference, autoresets
+        # session.delay(0.1)           # work around race conditions....
 
     def _HW_stop(self):
         """stop any actions"""
-        self._writeControlBit(6, 1)     # docu: bit6 = stop, autoresets
+        self._writeControlBit(6, 1)    # docu: bit6 = stop, autoresets
         session.delay(0.1)             # work around race conditions....
 
     def _HW_ACK_Error(self):
         """acknowledge any error"""
-        self._writeControlBit(7, 1)     # docu: bit7 = stop, autoresets
+        self._writeControlBit(7, 1)    # docu: bit7 = stop, autoresets
         session.delay(0.1)             # work around race conditions....
 
     # more advanced stuff: setting/getting parameters
@@ -402,7 +408,7 @@ class BeckhoffMotorBase(CanReference, BeckhoffCoderBase, Motor):
         self.log.debug('writeParameter %d:0x%04x', index, value)
 
         if store2eeprom:
-            if self._HW_ReadStatusWord() & (1 << 6) == 0:
+            if self._HW_readStatusWord() & (1 << 6) == 0:
                 # target reached not set -> problem
                 raise UsageError(self, 'Param acces no possible until target '
                                  'reached')
@@ -462,12 +468,28 @@ class BeckhoffMotorBase(CanReference, BeckhoffCoderBase, Motor):
                 return
         raise NicosTimeoutError('HW still BUSY after 100s')
 
+    def _HW_wait_while_HOT(self):
+        sd = 6.5
+        anz = int(round(self.waittime * 60 / sd))
+        # Pech bei 2.session
+        for a in range(anz):
+            temp = self.motortemp
+            if temp < self.maxtemp:  # wait if temp>33 until temp<26
+                self.log.debug('%d Celsius continue', temp)
+                return True
+            self.log.info('%d Celsius Timeout in: %.1f min', temp,
+                          (anz - a) * sd / 60)
+            session.delay(sd)
+        raise NicosTimeoutError(
+            'HW still HOT after {0:d} min'.format(self.waittime))
+
     #
     # Nicos methods
     #
 
     def doStart(self, target):
         self._HW_wait_while_BUSY()
+        self._HW_wait_while_HOT()
         # now just go where commanded....
         self._writeDestination(self._phys2steps(target))
         self._HW_start()
@@ -526,7 +548,6 @@ class BeckhoffMotorCab1(BeckhoffMotorBase):
         return self._HW_readParameter('encoderRawValue')
 
     def _HW_readParameter_index(self, index):
-        ###
         LDebug = True
         if index not in self.HW_readable_Params:
             raise UsageError('Reading not possible for parameter index %d' %

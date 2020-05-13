@@ -29,10 +29,12 @@ _detectorcolumn = Column(
 
 _live = Block('Live image of Detector', [
         BlockRow(
-            Field(picture='webroot/live_lin.png',
+#            Field(picture='webroot/live_lin.png',
+            Field(picture='liveimage_internal/live_lin.png',
                   width=50, height=50,refresh=10), 
         ),
-        ],
+    ],
+    setups='liveimage_internal',
 )
 
 
@@ -112,7 +114,7 @@ _temperatureblock = Block('Cryo Temperature', [
 )
 
 _garfieldblock = Block('Garfield Magnet', [
-        BlockRow(Field(dev='B_amagnet', name='B'), Field(dev='amagnet_connection', name='Mode') ),
+        BlockRow(Field(dev='B_amagnet', name='B'), Field(dev='amagnet_symmetry', name='Mode') ),
     ],
     setups='amagnet',
 )

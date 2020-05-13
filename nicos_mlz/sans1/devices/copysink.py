@@ -31,7 +31,6 @@ from __future__ import absolute_import, division, print_function
 import shutil
 from os import path
 
-from nicos import session
 from nicos.core import DataSinkHandler, Override, Param
 from nicos.core.params import absolute_path
 
@@ -40,15 +39,19 @@ from nicos_mlz.devices.qmesydaqsinks import QMesyDAQSink
 
 class CopySinkHandler(DataSinkHandler):
 
+    _target = None
+
     def prepare(self):
-        session.data.assignCounter(self.dataset)
-        self._datafile = session.data.createDataFile(
+        self.manager.assignCounter(self.dataset)
+        self._datafile = self.manager.createDataFile(
             self.dataset, self.sink.filenametemplate, self.sink.subdir,
             nomeasdata=True)
         self._target = self._datafile.name
         self._datafile.close()
 
     def end(self):
+        if self._target is None:  # prepare() not called
+            return
         image = self.detector._attached_images[0]
         if not hasattr(image, '_taco_guard'):
             return

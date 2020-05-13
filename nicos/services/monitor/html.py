@@ -36,12 +36,13 @@ from threading import RLock
 from time import sleep, time as currenttime
 
 import numpy
+from lttb import lttb
 
-from nicos._vendor.lttb import lttb
 from nicos.core import Param
 from nicos.core.constants import NOT_AVAILABLE
 from nicos.core.status import BUSY, DISABLED, ERROR, NOTREACHED, OK, WARN
-from nicos.pycompat import escape_html, from_utf8, string_types, to_utf8
+from nicos.pycompat import escape_html, from_utf8, string_types, text_type, \
+    to_utf8
 from nicos.services.monitor import Monitor as BaseMonitor
 from nicos.services.monitor.icon import nicos_icon
 from nicos.utils import checkSetupSpec, extractKeyAndIndex, safeWriteFile
@@ -57,7 +58,7 @@ except ImportError:
     pygr = None
 
 
-HEAD = '''\
+HEAD = u'''\
 <html>
 <head>
 <meta charset="utf-8"/>
@@ -139,7 +140,7 @@ class Field(object):
                 desc['item'] = indices
             desc['key'] = prefix + dev + '/value'
             desc['statuskey'] = prefix + dev + '/status'
-            desc['fixedkey'] =  prefix + dev + '/fixed'
+            desc['fixedkey'] = prefix + dev + '/fixed'
             if 'unit' not in desc:
                 desc['unitkey'] = prefix + dev + '/unit'
             if 'format' not in desc:
@@ -148,12 +149,12 @@ class Field(object):
             key, indices, _scale, _offset = extractKeyAndIndex(desc['key'], False)
             if indices:
                 desc['item'] = indices
-            desc['key'] = key
+            if 'name' not in desc:
+                desc['name'] = desc['key']
+            desc['key'] = prefix + key
             for kn in ('statuskey', 'fixedkey', 'unitkey', 'formatkey'):
                 if kn in desc:
                     desc[kn] = (prefix + desc[kn]).lower().replace('.', '/')
-            if 'name' not in desc:
-                desc['name'] = desc['key']
         self.__dict__.update(desc)
 
     def updateKeymap(self, keymap):
@@ -164,20 +165,31 @@ class Field(object):
                 keymap.setdefault(key, []).append(self)
 
 
+class Static(text_type):
+
+    def getHTML(self):
+        return self
+
+
 class Block(object):
     def __init__(self, config):
         self.enabled = True
-        self.content = []
+        self._content = []
         self.setups = config.get('setups')
         self._onlyfields = []
 
-    def add(self, p):
-        self.content.append(p)
+    def __iadd__(self, content):
+        """Easily adds content to the block using ``+=``."""
+        if isinstance(content, string_types):
+            self._content.append(Static(content))
+        else:
+            self._content.append(content)
+        return self
 
-    def __str__(self):
-        if self.enabled:
-            return ''.join(map(str, self.content))
-        return ''
+    def getHTML(self):
+        if self.enabled and self._content:
+            return u''.join(c.getHTML() for c in self._content)
+        return u''
 
 
 class Label(object):
@@ -190,13 +202,12 @@ class Label(object):
         self.back = back
         self.enabled = True
 
-    def __str__(self):
+    def getHTML(self):
         if not self.enabled:
-            return ''
-        return ('<div class="%s" style="color: %s; min-width: %sex; '
+            return u''
+        return (u'<div class="%s" style="color: %s; min-width: %sex; '
                 'background-color: %s">%s</div>' %
-                (self.cls, self.fore, self.width, self.back,
-                 to_utf8(self.text)))
+                (self.cls, self.fore, self.width, self.back, self.text))
 
 
 DATEFMT = '%Y-%m-%d'
@@ -259,13 +270,15 @@ class Plot(object):
     def maybeDownsamplePlotdata(self, data):
         if len(data[0]) > self.width:
             temp = numpy.array(data).T
-            down = lttb.downsample(temp, n_out=self.width)
+            down = lttb.downsample(temp[temp[:, 0].argsort()], n_out=self.width)
             data = down[:, 0], down[:, 1]
         return data
 
-    def __str__(self):
+    def getHTML(self):
         if not self.enabled:
             return ''
+        if not self.data or not self.curves:
+            return u'<span>No data or curves found</span>'
         with self.lock:
             for i, (d, c) in enumerate(zip(self.data, self.curves)):
                 try:
@@ -291,7 +304,7 @@ class Plot(object):
             gr.clearws()
         with open(self.tempfile, 'rb') as fp:
             imgbytes = fp.read()
-        return ('<img src="data:image/svg+xml;base64,%s" '
+        return (u'<img src="data:image/svg+xml;base64,%s" '
                 'style="width: %sex; height: %sex">' % (
                     from_utf8(b2a_base64(imgbytes)),
                     self.width, self.height))
@@ -308,13 +321,13 @@ class Picture(object):
         self.height = height
         self.name = name
 
-    def __str__(self):
+    def getHTML(self):
+        s = u''
         if not self.enabled:
-            return ''
-        s = ''
+            return s
         if self.name:
-            s += '<div class="label">%s</div><br>' % self.name
-        s += '<img src="%s" style="width: %sex; height: %sex">' % (
+            s += u'<div class="label">%s</div><br>' % self.name
+        s += u'<img src="%s" style="width: %sex; height: %sex">' % (
             self.filepath, self.width, self.height)
         return s
 
@@ -325,13 +338,16 @@ class Monitor(BaseMonitor):
     parameters = {
         'filename': Param('Filename for HTML output', type=str, mandatory=True),
         'interval': Param('Interval for writing file', default=5),
+        'noexpired': Param('If true, show expired values as "n/a"', type=bool)
     }
 
     def mainLoop(self):
         while not self._stoprequest:
             try:
-                content = ''.join(map(str, self._content))
-                safeWriteFile(self.filename, content, maxbackups=0)
+                if self._content:
+                    content = u''.join(ct.getHTML() for ct in self._content)
+                    safeWriteFile(self.filename, to_utf8(content), mode='wb',
+                                  maxbackups=0)
             except Exception:
                 self.log.error('could not write status to %r', self.filename,
                                exc=1)
@@ -341,6 +357,13 @@ class Monitor(BaseMonitor):
 
     def closeGui(self):
         pass
+
+    def __iadd__(self, content):
+        if isinstance(content, string_types):
+            self._content.append(Static(content))
+        else:
+            self._content.append(content)
+        return self
 
     def initGui(self):
         self._content = []
@@ -353,8 +376,6 @@ class Monitor(BaseMonitor):
         self._white = 'white'
         self._orange = '#ffa500'
 
-        add = self._content.append
-
         headprops = dict(
             fs = self._fontsize,
             fst = self._timefontsize,
@@ -365,16 +386,16 @@ class Monitor(BaseMonitor):
             title = escape_html(self.title),
             icon = nicos_icon,
         )
-        add(HEAD % headprops)
 
-        add('<table class="layout">'
-            '<tr><td><div class="time">')
+        self += HEAD % headprops
+
+        self += u'<table class="layout"><tr><td><div class="time">'
         self._timelabel = Label('timelabel')
-        add(self._timelabel)
-        add('</div><div>')
+        self += self._timelabel
+        self += u'</div><div>'
         self._warnlabel = Label('warnings', back='red', text='')
-        add(self._warnlabel)
-        add('</div></td></tr>\n')
+        self += self._warnlabel
+        self += u'</div></td></tr>\n'
 
         self._plots = {}
 
@@ -391,61 +412,62 @@ class Monitor(BaseMonitor):
                 if not p:
                     p = Plot(field.plotwindow, field.width, field.height)
                     self._plots[field.plot] = p
-                    blk.add(p)
+                    blk += p
                 field._plotcurve = p.addcurve(field.name)
             elif field.picture:
                 pic = Picture(field.picture, field.width, field.height,
                               escape_html(field.name))
-                blk.add(pic)
+                blk += pic
             else:
                 # deactivate plots
                 field.plot = None
                 # create name label
                 flabel = field._namelabel = Label('name', field.width,
                                                   escape_html(field.name))
-                blk.add(flabel)
-                blk.add('</td></tr><tr><td>')
+                blk += flabel
+                blk += u'</td></tr><tr><td>'
                 # create value label
                 cls = 'value'
                 if field.istext:
                     cls += ' istext'
                 vlabel = field._valuelabel = Label(cls, fore='white')
-                blk.add(vlabel)
+                blk += vlabel
             return field
 
         for superrow in self.layout:
-            add('<tr><td class="center">\n')
+            self += u'<tr><td class="center">\n'
             for column in superrow:
-                add('  <table class="column"><tr><td>')
+                self += u'  <table class="column"><tr><td>'
                 for block in column:
+                    block = self._resolve_block(block)
                     blk = Block(block._options)
-                    blk.add('<div class="block">')
-                    blk.add('<div class="blockhead">%s</div>' %
+                    blk += u'<div class="block">'
+                    blk += (u'<div class="blockhead">%s</div>' %
                             escape_html(block._title))
-                    blk.add('\n    <table class="blocktable">')
+                    blk += u'\n    <table class="blocktable">'
                     for row in block:
                         if row is None:
-                            blk.add('<tr></tr>')
+                            blk += u'<tr></tr>'
                         else:
-                            blk.add('<tr><td class="center">')
+                            blk += u'<tr><td class="center">'
                             for field in row:
-                                blk.add('\n      <table class="field"><tr><td>')
+                                blk += u'\n      <table class="field"><tr><td>'
                                 f = _create_field(blk, field)
                                 if f and f.setups:
                                     if blk.setups:
                                         blk._onlyfields.append(f)
                                     else:
                                         self._onlyfields.append(f)
-                                blk.add('</td></tr></table> ')
-                            blk.add('\n    </td></tr>')
-                    blk.add('</table>\n  </div>')
-                    add(blk)
+                                blk += u'</td></tr></table> '
+                            blk += u'\n    </td></tr>'
+                    blk += u'</table>\n  </div>'
+                    self += blk
                     if blk.setups:
                         self._onlyblocks.append(blk)
-                add('</td></tr></table>\n')
-            add('</td></tr>')
-        add('</table>\n')
-        add('</body></html>\n')
+                self += u'</td></tr></table>\n'
+            self += u'</td></tr>'
+        self += u'</table>\n'
+        self += u'</body></html>\n'
 
     def updateTitle(self, text):
         self._timelabel.text = text
@@ -483,7 +505,8 @@ class Monitor(BaseMonitor):
                 field._namelabel.back = self._bgcolor
             if expired:
                 field._valuelabel.back = self._gray
-                fvalue = 'n/a'
+                if self.noexpired:
+                    fvalue = 'n/a'
             else:
                 field._valuelabel.back = self._black
             if fvalue is None:
@@ -526,7 +549,7 @@ class Monitor(BaseMonitor):
                 self.signalKeyChange(field, field.key, field.value, 0, False)
 
     def _labelunittext(self, text, unit, fixed):
-        return escape_html(text) + ' <span class="unit">%s</span><span ' \
+        return escape_html(text) + u' <span class="unit">%s</span><span ' \
             'class="fixed">%s</span> ' % (escape_html(unit), fixed)
 
     def switchWarnPanel(self, on):

@@ -60,10 +60,11 @@ class ExpPanel(Panel):
     """
 
     panelName = 'Experiment setup'
+    ui = 'panels/setup_exp.ui'
 
     def __init__(self, parent, client, options):
         Panel.__init__(self, parent, client, options)
-        loadUi(self, 'panels/setup_exp.ui')
+        loadUi(self, self.ui)
         self.propdbInfo.setVisible(False)
         self._orig_proposal = None
         self._new_exp_panel = None
@@ -94,10 +95,13 @@ class ExpPanel(Panel):
             self.sampleName.setText(decodeAny(values[4]))
             self.errorAbortBox.setChecked(values[5] == 'abort')
         receiverinfo = self.client.eval(
-            '_listReceivers("nicos.devices.notifiers.Mailer")', {})
+            '__import__("nicos").commands.basic._listReceivers('
+            '"nicos.devices.notifiers.Mailer")', {})
         emails = []
         for data in itervalues(receiverinfo):
-            emails.extend(addr for (addr, what) in data if what == 'receiver')
+            for (addr, what) in data:
+                if what == 'receiver' and addr not in emails:
+                    emails.append(addr)
         self._orig_email = emails
         self.notifEmails.setPlainText(decodeAny('\n'.join(self._orig_email)))
         propinfo = self.client.eval('session.experiment.propinfo', {})
@@ -242,6 +246,8 @@ class ExpPanel(Panel):
                            'FinishExperiment first!')
             return
 
+        script_running = self.mainwindow.current_status != 'idle'
+
         # do some work
         if prop and prop != self._orig_proposal_info[0]:
             args = {'proposal': prop}
@@ -253,7 +259,7 @@ class ExpPanel(Panel):
                 args['user'] = users
             code = 'NewExperiment(%s)' % ', '.join('%s=%r' % i
                                                    for i in args.items())
-            if self.client.run(code, noqueue=False) is None:
+            if self.client.run(code, noqueue=True) is None:
                 self.showError('Could not start new experiment, a script is '
                                'still running.')
                 return
@@ -290,6 +296,10 @@ class ExpPanel(Panel):
 
         # tell user about everything we did
         if done:
+            if script_running:
+                done.append('')
+                done.append('The changes have been queued since a script '
+                            'is currently running.')
             self.showInfo('\n'.join(done))
         self._update_proposal_info()
 

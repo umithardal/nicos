@@ -33,6 +33,7 @@ sysconfig = dict(
 devices = dict(
     monitor = device('nicos.devices.generic.VirtualCounter',
         type = 'monitor',
+        presetaliases = ['mon1'],
     ),
     timer = device('nicos.devices.generic.VirtualTimer',
         unit = 's',
@@ -45,7 +46,6 @@ devices = dict(
     det = device('nicos_mlz.toftof.devices.detector.Detector',
         timers = ['timer'],
         monitors = ['monitor'],
-        counters = [],
         images = ['image'],
         rc = 'rc',
         chopper = 'ch',

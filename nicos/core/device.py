@@ -1310,12 +1310,13 @@ class Waitable(Readable):
     def _getWaiters(self):
         """Return a list (or adev-style dict) of all waiter adevs.
 
-        "Waiter" adevs are the subdevices whose status must become leave BUSY
-        when waiting on self.
+        "Waiter" adevs are the subdevices whose status must leave BUSY when
+        waiting on self.
 
         By default, this includes *all* adevs (of which the non-waitables are
-        removed), but can be overridden to remove some waitable devices as well,
-        in case they are only used read-only.
+        removed), but can be overridden to remove some waitable devices as
+        well, in case they are not important to determine the status of this
+        device.
         """
         return self._adevs
 
@@ -1548,6 +1549,16 @@ class Moveable(Waitable):
            This method must be implemented and actually move the device to the
            new position.
         """
+        pos = self._check_start(pos)
+        if pos is not Ellipsis:
+            self._start_unchecked(pos)
+
+    def _check_start(self, pos):
+        """Do all checks if we can move to the given pos.
+
+        Returns new, potentially type-converted pos, or Ellipsis if move
+        should not be started.
+        """
         if self._mode == SLAVE:
             raise ModeError(self, 'start not possible in slave mode')
         if self.fixed:
@@ -1557,11 +1568,11 @@ class Moveable(Waitable):
                 if abs(self.read() - pos) <= getattr(self, 'precision', 0):
                     self.log.debug('device fixed; start() allowed since '
                                    'already at desired position %s', pos)
-                    return
+                    return Ellipsis
             except Exception:
                 pass
             self.log.warning('device fixed, not moving: %s', self.fixed)
-            return
+            return Ellipsis
         if self.requires:
             try:
                 session.checkAccess(self.requires)
@@ -1576,6 +1587,10 @@ class Moveable(Waitable):
         if not ok:
             raise LimitError(self, 'moving to %s is not allowed: %s' %
                              (self.format(pos, unit=True), why))
+        return pos
+
+    def _start_unchecked(self, pos):
+        """Start movement, assuming that _check_start has been done."""
         if isinstance(self, HasTimeout):
             self.resetTimeout(pos)
         if self._sim_intercept:
@@ -1964,7 +1979,9 @@ class Measurable(Waitable):
                 time = self._sim_preset['t']
             else:
                 time = 0
-            session.clock.wait(self._sim_started + time)
+            if self._sim_started is not None:
+                session.clock.wait(self._sim_started + time)
+                self._sim_started = None
             return
         self.doFinish()
 

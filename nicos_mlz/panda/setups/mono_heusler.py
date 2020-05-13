@@ -2,7 +2,7 @@ description = 'PANDA Heusler-monochromator'
 
 group = 'lowlevel'
 
-includes = ['monofoci', 'monoturm', 'panda_s7']
+includes = ['monofoci', 'monoturm', 'panda_mtt']
 excludes = ['mono_pg', 'mono_cu', 'mono_si', 'ana_heusler']
 
 extended = dict(dynamic_loaded = True)
@@ -65,9 +65,7 @@ devices = dict(
     mfv_heusler = device('nicos_mlz.panda.devices.rot_axis.RefAxis',
         description = 'vertical focus of Heusler monochromator',
         motor = 'mfv_heusler_step',
-        coder = 'mfv_heusler_step',
         # obs = ['mfv_heusler_poti'],
-        obs = [],
         precision = 0.1,
         backlash = 0,
         refpos = -44,
@@ -109,10 +107,8 @@ devices = dict(
     afh_heusler = device('nicos_mlz.panda.devices.rot_axis.RotAxis',
         description = 'horizontal focus of heusler ana',
         motor = 'afh_heusler_step',
-        coder = 'afh_heusler_step',
         dragerror = 5,
         abslimits = (-179, 179),
-        obs = [],
         precision = 1,
         fmtstr = '%.1f',
         autoref = None,  # disable autoref since there is no refswitch

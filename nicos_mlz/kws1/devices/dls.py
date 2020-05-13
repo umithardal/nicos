@@ -30,19 +30,18 @@ import time
 
 import numpy as np
 
-from nicos import session
 from nicos.core import ArrayDesc, Attach, Measurable, Moveable, Override, \
     Param, Readable, dictof, oneof, tupleof
 from nicos.core.constants import FINAL, INTERMEDIATE, POINT
 from nicos.core.data import DataSinkHandler
 from nicos.core.status import BUSY, OK
 from nicos.devices.datasinks import FileSink
-from nicos.devices.tango import ImageChannel
+from nicos.devices.tango import BaseImageChannel
 
 MODES = ['cross_auto1', 'cross_auto2', 'auto1_auto2', 'cross_cross']
 
 
-class DLSCard(ImageChannel):
+class DLSCard(BaseImageChannel):
     attached_devices = {
         'wheels': Attach('The filter wheel positions', Readable,
                          multiple=True, optional=True),
@@ -261,7 +260,7 @@ class DLSFileSinkHandler(DataSinkHandler):
                 mean3 = 0,
             )
 
-            fd = session.data.createDataFile(
+            fd = self.manager.createDataFile(
                 self.dataset,
                 self.sink.filenametemplate,
                 self.sink.subdir,
@@ -273,7 +272,7 @@ class DLSFileSinkHandler(DataSinkHandler):
             fd.close()
 
     def prepare(self):
-        session.data.assignCounter(self.dataset)
+        self.manager.assignCounter(self.dataset)
         self._counter = 0
 
     def putMetainfo(self, metainfo):

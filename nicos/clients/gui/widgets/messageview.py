@@ -34,7 +34,7 @@ from nicos.guisupport.qt import QBrush, QColor, QFont, QMainWindow, QPainter, \
     QPixmap, QRect, QRegExp, QSize, Qt, QTextBrowser, QTextCharFormat, \
     QTextCursor, QTextEdit
 # pylint: disable=redefined-builtin
-from nicos.pycompat import from_maybe_utf8, urllib, xrange as range
+from nicos.pycompat import from_maybe_utf8, to_utf8, urllib, xrange as range
 from nicos.utils.loggers import ACTION, INPUT
 
 levels = {DEBUG: 'DEBUG', INFO: 'INFO', WARNING: 'WARNING',
@@ -66,7 +66,6 @@ command_re = re.compile(r'>>> \[([^ ]+) .*?\]  (.*?)\n')
 script_re = re.compile(r'>>> \[([^ ]+) .*?\] -{20} ?(.*?)\n')
 update_re = re.compile(r'UPDATE (?:\(.*?\) )?\[([^ ]+) .*?\] -{20} ?(.*?)\n')
 
-
 # time formatter
 
 def format_time_full(timeval):
@@ -87,6 +86,7 @@ class MessageView(QTextBrowser):
         self.setFullTimestamps(False)
         self._background_image = None
         self._background_image_area = None
+        self.text_curson_position = QTextCursor.End
 
     def setFullTimestamps(self, on):
         if on:
@@ -161,8 +161,8 @@ class MessageView(QTextBrowser):
             if message[3].startswith('  > '):
                 fmt = QTextCharFormat(bold)
                 fmt.setAnchor(True)
-                fmt.setAnchorHref('exec:' +
-                                  urllib.parse.quote(message[3][4:].strip()))
+                command = to_utf8(message[3][4:].strip())
+                fmt.setAnchorHref('exec:' + urllib.parse.quote(command))
                 return name + message[3], fmt
             text = name + message[3]
         elif levelno == INPUT:
@@ -170,7 +170,8 @@ class MessageView(QTextBrowser):
             if m:
                 fmt = QTextCharFormat(bold)
                 fmt.setAnchor(True)
-                fmt.setAnchorHref('exec:' + urllib.parse.quote(m.group(2)))
+                command = to_utf8(m.group(2))
+                fmt.setAnchorHref('exec:' + urllib.parse.quote(command))
                 if m.group(1) != self._currentuser:
                     fmt.setForeground(QBrush(QColor('#0000C0')))
                 return message[3], fmt
@@ -178,8 +179,9 @@ class MessageView(QTextBrowser):
             if m:
                 fmt = QTextCharFormat(bold)
                 if m.group(2):
+                    command = to_utf8(m.group(2))
                     fmt.setAnchor(True)
-                    fmt.setAnchorHref('edit:' + urllib.parse.quote(m.group(2)))
+                    fmt.setAnchorHref('edit:' + urllib.parse.quote(command))
                 if m.group(1) != self._currentuser:
                     fmt.setForeground(QBrush(QColor('#0000C0')))
                 return message[3], fmt
@@ -187,8 +189,9 @@ class MessageView(QTextBrowser):
             if m:
                 fmt = QTextCharFormat(bold)
                 if m.group(2):
+                    command = to_utf8(m.group(2))
                     fmt.setAnchor(True)
-                    fmt.setAnchorHref('edit:' + urllib.parse.quote(m.group(2)))
+                    fmt.setAnchorHref('edit:' + urllib.parse.quote(command))
                 if m.group(1) != self._currentuser:
                     fmt.setForeground(QBrush(QColor('#006090')))
                 else:
@@ -207,12 +210,13 @@ class MessageView(QTextBrowser):
             fmt = QTextCharFormat(fmt)
             # show traceback info on click
             fmt.setAnchor(True)
-            fmt.setAnchorHref('trace:' + urllib.parse.quote(message[4]))
+            tbinfo = to_utf8(message[4])
+            fmt.setAnchorHref('trace:' + urllib.parse.quote(tbinfo))
         return text, fmt
 
     def addText(self, text, fmt=None):
         textcursor = self.textCursor()
-        textcursor.movePosition(QTextCursor.End)
+        textcursor.movePosition(self.text_curson_position)
         textcursor.setCharFormat(fmt or std)
         textcursor.insertText(from_maybe_utf8(text))
 
@@ -233,7 +237,7 @@ class MessageView(QTextBrowser):
 
     def addMessages(self, messages):
         textcursor = self.textCursor()
-        textcursor.movePosition(QTextCursor.End)
+        textcursor.movePosition(self.text_curson_position)
         formatter = self.formatMessage
         for message in messages:
             text, fmt = formatter(message, actions=False)
@@ -300,6 +304,12 @@ class MessageView(QTextBrowser):
             # repaint viewport on scoll to preserve the background image.
             # Using 'update' to let qt optimize the process (speed/flickering)
             self.viewport().update()
+
+    def enableReverseScrolling(self, value):
+        if value:
+            self.text_curson_position = QTextCursor.Start
+        else:
+            self.text_curson_position = QTextCursor.End
 
     def resizeEvent(self, ev):
         # recalculate the background area only if necessary

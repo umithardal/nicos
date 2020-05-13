@@ -44,6 +44,7 @@ from nicos.core import SIMULATION, ArrayDesc, CanDisable, CommunicationError, \
     HasPrecision, HasTimeout, InvalidValueError, Moveable, NicosError, \
     Override, Param, ProgrammingError, Readable, Value, dictof, floatrange, \
     intrange, listof, nonemptylistof, oneof, oneofdict, status, tangodev
+from nicos.core.constants import FINAL, SLAVE
 from nicos.core.mixins import HasOffset, HasWindowTimeout
 from nicos.devices.abstract import CanReference, Coder, Motor as NicosMotor
 from nicos.devices.generic.detector import ActiveChannel, \
@@ -143,7 +144,7 @@ def describe_dev_error(exc):
             fulldesc = 'connection to Tango server failed, is the server ' \
                 'running?'
     elif reason == 'API_CantConnectToDevice':
-        m = re.search(r'connect to device ([\w/]+)', fulldesc)
+        m = re.search(r'connect to device ([\w/-]+)', fulldesc)
         if m:
             fulldesc = 'connection to Tango device %s failed, is the server ' \
                 'running?' % m.group(1)
@@ -199,6 +200,11 @@ class PyTangoDevice(HasCommunication):
         PyTango.DevState.FAULT:  status.ERROR,
         PyTango.DevState.MOVING: status.BUSY,
     }
+
+    # Since each DeviceProxy leaks a few Python objects, we can't just
+    # drop them when the device fails to initialize, and create another one.
+    # It is also not required since they reconnect automatically.
+    proxy_cache = {}
 
     def doPreinit(self, mode):
         # Wrap PyTango client creation (so even for the ctor, logging and
@@ -266,7 +272,10 @@ class PyTangoDevice(HasCommunication):
         attribute operations with logging and exception mapping.
         """
         check_tango_host_connection(self.tangodevice, self.tangotimeout)
-        device = PyTango.DeviceProxy(address)
+        proxy_key = (self._name, address)
+        if proxy_key not in PyTangoDevice.proxy_cache:
+            PyTangoDevice.proxy_cache[proxy_key] = PyTango.DeviceProxy(address)
+        device = PyTangoDevice.proxy_cache[proxy_key]
         device.set_timeout_millis(int(self.tangotimeout * 1000))
         # detect not running and not exported devices early, because that
         # otherwise would lead to attribute errors later
@@ -300,17 +309,17 @@ class PyTangoDevice(HasCommunication):
 
             # handle different types for better debug output
             if category == 'cmd':
-                self.log.debug('[PyTango] command: %s%r', args[0], args[1:])
+                self.log.debug('[Tango] command: %s%r', args[0], args[1:])
             elif category == 'attr_read':
-                self.log.debug('[PyTango] read attribute: %s', args[0])
+                self.log.debug('[Tango] read attribute: %s', args[0])
             elif category == 'attr_write':
-                self.log.debug('[PyTango] write attribute: %s => %r',
+                self.log.debug('[Tango] write attribute: %s => %r',
                                args[0], args[1:])
             elif category == 'attr_query':
-                self.log.debug('[PyTango] query attribute properties: %s',
+                self.log.debug('[Tango] query attribute properties: %s',
                                args[0])
             elif category == 'constructor':
-                self.log.debug('[PyTango] device creation: %s', args[0])
+                self.log.debug('[Tango] device creation: %s', args[0])
                 try:
                     result = func(*args, **kwds)
                     return self._com_return(result, info)
@@ -318,10 +327,10 @@ class PyTangoDevice(HasCommunication):
                     self._com_raise(err, info)
 
             elif category == 'internal':
-                self.log.debug('[PyTango integration] internal: %s%r',
+                self.log.debug('[Tango integration] internal: %s%r',
                                func.__name__, args)
             else:
-                self.log.debug('[PyTango] call: %s%r', func.__name__, args)
+                self.log.debug('[Tango] call: %s%r', func.__name__, args)
 
             return self._com_retry(info, func, *args, **kwds)
 
@@ -368,7 +377,7 @@ class PyTangoDevice(HasCommunication):
         exclass = REASON_MAPPING.get(
             reason, EXC_MAPPING.get(type(err), NicosError))
         fulldesc = self._tango_exc_desc(err)
-        self.log.debug('PyTango error: %s', fulldesc)
+        self.log.debug('[Tango] error: %s', fulldesc)
         raise exclass(self, fulldesc)
 
 
@@ -628,10 +637,10 @@ class TemperatureController(HasWindowTimeout, RampActuator):
     def doPoll(self, n, maxage):
         if self.ramp:
             self._pollParam('setpoint', 1)
-            self._pollParam('heateroutput', 1)
+        if n % 5 == 0:
+            self._pollParam('heateroutput', 5)
         if n % 30 == 0:
             self._pollParam('setpoint', 30)
-            self._pollParam('heateroutput', 30)
             self._pollParam('p')
             self._pollParam('i')
             self._pollParam('d')
@@ -914,7 +923,7 @@ class CounterChannel(CounterChannelMixin, DetectorChannel):
         return self._dev.value
 
 
-class ImageChannel(ImageChannelMixin, DetectorChannel):
+class BaseImageChannel(ImageChannelMixin, DetectorChannel):
     """
     Detector channel for delivering images.
     """
@@ -973,7 +982,25 @@ class ImageChannel(ImageChannelMixin, DetectorChannel):
         return self._dev.value.reshape(self.arraydesc.shape)
 
 
-class TOFChannel(ImageChannel):
+class ImageChannel(BaseImageChannel):
+    """Image channel that automatically returns the sum of all counts."""
+
+    def doInit(self, mode):
+        BaseImageChannel.doInit(self, mode)
+        if mode != SLAVE:
+            self.readArray(FINAL)  # update readresult at startup
+
+    def doReadArray(self, quality):
+        narray = BaseImageChannel.doReadArray(self, quality)
+        self.readresult = [narray.sum()]
+        return narray
+
+    def valueInfo(self):
+        return Value(name=self.name, type='counter', fmtstr='%d',
+                     errors='sqrt', unit='cts'),
+
+
+class TOFChannel(BaseImageChannel):
     """
     Image channel with Time-of-flight related attributes.
     """

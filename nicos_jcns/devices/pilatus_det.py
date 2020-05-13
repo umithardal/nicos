@@ -1,7 +1,7 @@
 #  -*- coding: utf-8 -*-
 # *****************************************************************************
 # NICOS, the Networked Instrument Control System of the MLZ
-# Copyright (c) 2009-2019 by the NICOS contributors (see AUTHORS)
+# Copyright (c) 2009-2020 by the NICOS contributors (see AUTHORS)
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -412,9 +412,9 @@ class TIFFImageSinkHandler(DataSinkHandler):
     """
 
     def prepare(self):
-        session.data.assignCounter(self.dataset)
+        self.manager.assignCounter(self.dataset)
         for det in self.sink.get_pilatus_detectors():
-            filename, filepaths = session.data.getFilenames(
+            filename, filepaths = self.manager.getFilenames(
                 self.dataset, self.sink.filenametemplate, self.sink.subdir)
             # imagedir = <year>/<proposal>/<subdir>
             det.imagedir = '/'.join(filepaths[0].split(

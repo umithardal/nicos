@@ -32,6 +32,23 @@ extended = dict(
     representative = 'T',
 )
 
+watch_conditions = [
+    dict(condition = 't_value > 300',
+         message = 'Temperature too high (exceeds 300 K)',
+         type = 'critical',
+         gracetime = 5,
+         action = 'maw(T, 290)'),
+]
+
 startupcode = """
 AddEnvironment(T, Ts)
 """
+
+monitor_blocks = {
+    'default': Block('Temperature', [
+        BlockRow(Field(gui='nicos_demo/demo/gui/cryo.ui')),
+        # BlockRow(Field(dev='T'), Field(key='t/setpoint', name='Setpoint')),
+        # BlockRow(Field(dev='T', plot='T', plotwindow=300, width=50),
+        #          Field(key='t/setpoint', name='SetP', plot='T', plotwindow=300))
+    ], setups=setupname),
+}

@@ -43,6 +43,7 @@ from nicos.core import MASTER, SIMULATION, Attach, ConfigurationError, \
     Device, Measurable, NicosError, Param, Readable, UsageError, anytype, \
     dictof, listof, mailaddress, none_or, oneof, usermethod
 from nicos.core.acquire import DevStatistics
+from nicos.core.data import DataManager
 from nicos.core.params import expanded_path, nonemptystring, subdir
 from nicos.devices.sample import Sample
 from nicos.pycompat import from_maybe_utf8, listitems, string_types
@@ -173,7 +174,18 @@ class Experiment(Device):
         'sample': Attach('The device object representing the sample', Sample),
     }
 
+    # Selects which class is used for `self.data`, the data manager.
+    # Can be overridden in subclasses, but should always be a subclass of the
+    # core DataManager.
+    datamanager_class = DataManager
+
     _proposal_thds = {}  # mapping of proposal => FinishExperiment thread
+
+    def doPreinit(self, mode):
+        self.__dict__['data'] = self.datamanager_class()
+
+    def doShutdown(self):
+        self.data.reset()
 
     #
     # hooks: may be overriden in derived classes to enhance functionality
@@ -565,7 +577,7 @@ class Experiment(Device):
             except Exception:
                 notifier.log.warning('could not clear notifier info', exc=1)
         try:
-            session.data.reset_all()
+            session.experiment.data.reset_all()
         except Exception:
             self.log.warning('could not clear data manager info', exc=1)
 
@@ -617,7 +629,7 @@ class Experiment(Device):
         self._createCustomProposalSymlink()
 
     @usermethod
-    def finish(self, *args, **kwds):
+    def finish(self):
         """Called by `.FinishExperiment`. Returns the `FinishExperiment`
         Thread if applicable otherwise `None`.
 
@@ -641,7 +653,7 @@ class Experiment(Device):
         # zip up the experiment data if wanted
         if self.proptype == 'user':
             try:
-                self._generateExpReport(**kwds)
+                self._generateExpReport()
             except Exception:
                 self.log.warning('could not generate experimental report',
                                  exc=1)
@@ -652,14 +664,7 @@ class Experiment(Device):
                 pzip = None
                 receivers = None
                 if self.sendmail:
-                    if args:
-                        receivers = args
-                    else:
-                        receivers = self.propinfo.get('user_email', receivers)
-                    receivers = kwds.get('receivers', kwds.get('email',
-                                                               receivers))
-                    if isinstance(receivers, string_types):  # convert to list
-                        receivers = [receivers]
+                    receivers = self.propinfo.get('user_email', [])
                 if self.zipdata or self.sendmail:
                     pzip = path.join(self.proposalpath, '..', self.proposal +
                                      '.zip')
@@ -670,8 +675,8 @@ class Experiment(Device):
                     stats = {}
                 stats.update(propinfo)
                 # start separate thread for zipping and disabling old proposal
-                self.log.debug('Start separate thread for zipping and '
-                               'disabling proposal.')
+                self.log.debug('starting separate thread for zipping and '
+                               'disabling proposal')
                 if self.isProposalFinishThreadAlive(self.proposal):
                     self.log.error(
                         'Proposal %s is already finishing. Please report '
@@ -812,7 +817,7 @@ class Experiment(Device):
     def _zip(self, pzip, proposalpath):
         """Zip all files in `proposalpath` folder into `pzip` (.zip) file."""
         self.log.info('zipping experiment data, please wait...')
-        zipname = zipFiles(pzip, proposalpath)
+        zipname = zipFiles(pzip, proposalpath, logger=self.log)
         self.log.info('zipping done: stored as %s', zipname)
         return zipname
 
@@ -905,8 +910,7 @@ class Experiment(Device):
         if self.managerights and proptype == 'user':
             disableDirectory(proposalpath, logger=self.log,
                              **self.managerights)
-            self.log.debug('disabled directory %s'
-                           % proposalpath)
+            self.log.debug('disabled directory %s', proposalpath)
 
     def _setMode(self, mode):
         if self.elog:
@@ -999,7 +1003,7 @@ class Experiment(Device):
         d.update(self.propinfo)
         return d
 
-    def _generateExpReport(self, **kwds):
+    def _generateExpReport(self):
         if self._mode == SIMULATION:
             return  # dont touch fs if in simulation!
         if not self.reporttemplate:
@@ -1051,7 +1055,6 @@ class Experiment(Device):
         # collect info
         stats = self._statistics()
         stats.update(self.propinfo)
-        stats.update(kwds)
         # encode all text that may be Unicode into RTF \u escapes
         for key in stats:
             if isinstance(stats[key], string_types):
