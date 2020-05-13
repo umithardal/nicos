@@ -13,38 +13,35 @@ modules = ['nicos.commands.standard']
 
 devices = dict(
     Skeleton=device('nicos.devices.instrument.Instrument',
-                    description='instrument object',
-                    instrument='loki',
-                    responsible='M. Loki <mike.Loki@esss.se>',
-                    ),
+        description='instrument object',
+        instrument='loki',
+        responsible='M. Loki <mike.loki@ess.eu>',
+    ),
 
     Sample=device('nicos.devices.sample.Sample',
-                  description='The currently used sample',
-                  ),
+        description='The currently used sample',
+    ),
 
     Exp=device('nicos.devices.experiment.Experiment',
-               description='experiment object',
-               dataroot='/opt/nicos-data',
-               sendmail=True,
-               serviceexp='p0',
-               sample='Sample',
-               ),
+        description='experiment object',
+        dataroot='/opt/nicos-data',
+        sendmail=True,
+        serviceexp='p0',
+        sample='Sample',
+    ),
 
-    filesink=device('nicos.devices.datasinks.AsciiScanfileSink',
-                    ),
+    filesink=device('nicos.devices.datasinks.AsciiScanfileSink',),
 
-    conssink=device('nicos.devices.datasinks.ConsoleScanSink',
-                    ),
+    conssink=device('nicos.devices.datasinks.ConsoleScanSink',),
 
-    daemonsink=device('nicos.devices.datasinks.DaemonSink',
-                      ),
+    daemonsink=device('nicos.devices.datasinks.DaemonSink',),
 
     Space=device('nicos.devices.generic.FreeSpace',
-                 description='The amount of free space for storing data',
-                 path=None,
-                 minfree=5,
-                 ),
+        description='The amount of free space for storing data',
+        path=None,
+        minfree=5,
+    ),
 )
 
-startupcode = """
-"""
+startupcode = '''
+'''
