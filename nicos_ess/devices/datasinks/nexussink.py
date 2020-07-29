@@ -24,37 +24,22 @@
 
 from __future__ import absolute_import, division, print_function
 
-import json
+import copy
 import os
 import time
 
 from streaming_data_types.run_start_pl72 import serialise_pl72
 from streaming_data_types.run_stop_6s4t import serialise_6s4t
 
-from nicos import session
 from nicos.core import Attach, Override, Param, dictof, status, tupleof
 from nicos.core.constants import POINT
 from nicos.core.data import DataSinkHandler
 from nicos.core.errors import NicosError
 from nicos.devices.datasinks import FileSink
 from nicos.pycompat import iteritems
-
 from nicos_ess.devices.kafka.producer import ProducesKafkaMessages
 from nicos_ess.devices.kafka.status_handler import KafkaStatusHandler
 from nicos_ess.nexus.converter import NexusTemplateConverter
-
-
-def copy_nexus_template(template):
-    """ Implement a specialized version of copy. The dict structure is deep
-    copied while the placeholders are a shallow copy of the original """
-    if isinstance(template, dict):
-        return {k: copy_nexus_template(v) for k, v in
-                template.items()}
-    elif isinstance(template, list):
-        return [copy_nexus_template(elem) for elem in
-                template]
-    else:
-        return template
 
 
 class NexusFileWriterStatus(KafkaStatusHandler):
@@ -215,7 +200,8 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
             self.manager.updateMetainfo()
 
     def begin(self):
-        self.template = copy_nexus_template(self.sink.template)
+        # A deep copy is ABSOLUTELY required here!
+        self.template = copy.deepcopy(self.sink.template)
         self._remove_optional_components()
 
         # Get the start time
@@ -224,13 +210,13 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
 
         start_time = int(self.dataset.started * 1000)
         start_time_str = time.strftime('%Y-%m-%d %H:%M:%S',
-                                      time.localtime(start_time / 1000))
+                                       self.dataset.started)
 
         metainfo = self.dataset.metainfo
         # Put the start time in the metainfo
         if ('dataset', 'starttime') not in metainfo:
-
-            metainfo[('dataset', 'starttime')] = (start_time_str, start_time_str,
+            metainfo[('dataset', 'starttime')] = (start_time_str,
+                                                  start_time_str,
                                                   '', 'general')
 
         # Generate the command within NICOS
@@ -333,6 +319,7 @@ class NexusFileWriterSink(ProducesKafkaMessages, FileSink):
                                type=str, default=None),
         'title': Param('Title to set in NeXus file', type=str,
                        settable=True, userparam=True, default=""),
+        'cachetopic': Param('Kafka topic for cache messages', type=str),
     }
 
     parameter_overrides = {
