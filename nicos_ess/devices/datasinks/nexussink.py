@@ -221,7 +221,7 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
                                                   '', 'general')
 
         # Generate the command within NICOS
-        structure = self._converter.convert(self.sink.template,
+        structure = self._converter.convert(self.template,
                                             self.dataset.metainfo)
         job_id = str(self.dataset.uid)
 
