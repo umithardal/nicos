@@ -210,7 +210,9 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
 
         start_time = int(self.dataset.started * 1000)
         start_time_str = time.strftime('%Y-%m-%d %H:%M:%S',
-                                       self.dataset.started)
+                                       time.localtime(self.dataset.started))
+
+        self.log.error("begin3")
 
         metainfo = self.dataset.metainfo
         # Put the start time in the metainfo
