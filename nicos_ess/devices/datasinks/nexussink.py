@@ -213,8 +213,6 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
         start_time_str = time.strftime('%Y-%m-%d %H:%M:%S',
                                        time.localtime(self.dataset.started))
 
-        self.log.error("begin3")
-
         metainfo = self.dataset.metainfo
         # Put the start time in the metainfo
         if ('dataset', 'starttime') not in metainfo:
