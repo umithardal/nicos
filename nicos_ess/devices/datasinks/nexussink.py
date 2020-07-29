@@ -236,7 +236,7 @@ class NexusFileWriterSinkHandler(DataSinkHandler):
         start_message = serialise_pl72(job_id=job_id, filename=filename,
                                        start_time=start_time,
                                        stop_time=stop_time,
-                                       nexus_structure=structure,
+                                       nexus_structure=json.dumps(structure),
                                        broker=','.join(self.sink.brokers))
 
         self.log.info('Started file writing at: %s (%s)', start_time_str,
